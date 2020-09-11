@@ -1,3 +1,0 @@
-#: int.sh:1
-msgid "teste\\noutra linha"
-msgstr "teste\noutra linha"
