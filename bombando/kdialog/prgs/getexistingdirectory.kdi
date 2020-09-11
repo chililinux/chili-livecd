@@ -1,6 +1,0 @@
-#! /bin/bash
-#  Exemplos de uso do diálogo --getexistingdirectory
-
-Dir=$(kdialog --caption "Gravação das músicas" \
-    --getexistingdirectory                       \
-         /home/julio/Documentos/Musica)

@@ -1,2 +1,0 @@
-Este arquivo foi criado para demonstrar como a 
-opção --ellipisize do diálogo --list funciona.

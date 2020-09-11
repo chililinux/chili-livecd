@@ -1,7 +1,0 @@
-#! /bin/bash
-#  Exemplos do diálogo --warningyesno
-
-kdialog --title "Exemplo de warningyesno" \
-    --warningyesno                        \
-    "O arquivo /etc/hosts é um arquivo do sistema.\nTem certeza que deseja removê-lo?" &&
-        rm /etc/hosts

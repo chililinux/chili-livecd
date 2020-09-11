@@ -1,6 +1,0 @@
-#!/bin/bash
-find /usr | zenity --progress \
-    --pulsate                 \
-    --auto-close              \
-    --auto-kill               \
-    --text="Trabalhando..."
