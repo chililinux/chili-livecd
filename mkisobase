@@ -122,7 +122,7 @@ function sh_mkiso()
    #   $TEMPDIR
 
 	xorriso -as mkisofs \
-	  -o $OUTPUT_ISO \
+	  -o out/$OUTPUT_ISO \
 	  -isohybrid-mbr $ISOLINUXDIR/isohdpfx.bin    \
 	  -c isolinux/boot.cat \
 	  -c isolinux/boot.cat \
@@ -141,7 +141,7 @@ function sh_mkiso()
 	  $TEMPDIR
 
 	#rm -fr $TEMPDIR
-	log_success_msg2 "Arquivo iso $OUTPUT_ISO criado com sucesso!"
+	log_success_msg2 "Arquivo iso $PWD/out/$OUTPUT_ISO criado com sucesso!"
 }
 
 function init()
