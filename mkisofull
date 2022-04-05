@@ -10,7 +10,7 @@ trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 
 ARCH="x86_64"
 LFSVERSION="full"
-LFS=/lfs/base
+LFS=/lfs/full
 LOCALDIR=$PWD
 TEMPDIR=/livecd/lfsfull
 ISOLINUXDIR=$LOCALDIR/livecd/isolinux
