@@ -7,21 +7,23 @@ if [ $(id -u) != 0 ]; then
 fi
 
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
-LFSVERSION="full-1.0"
 
+ARCH="x86_64"
+LFSVERSION="full"
+LFS=/lfs/base
 LOCALDIR=$PWD
-TEMPDIR=/livecd/lfsisofull
+TEMPDIR=/livecd/lfsfull
 ISOLINUXDIR=$LOCALDIR/livecd/isolinux
 DISTRONAME="CHILIOS"
+DIAMES=$(date +"%Y%d")
+ANOMESDIA=$(date +"%Y.%m.%d")
+VOL_ID="CHILIOS_${DIAMES}"
 LABEL="ChiliOS"
-#LFS=/mnt/lfs
-LFS=/mnt/full
 DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
-#OUTPUT_ISO=chilios-$LFSVERSION-livecd-$DIAHORA.iso
-OUTPUT_ISO=live.iso
+OUTPUT_ISO="ChiliOS-$LFSVERSION-$ANOMESDIA-$ARCH.iso"
 isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32"
-KERNEL=/boot/vmlinuz-$(uname -r)
-INITRD=/boot/initrd-$(uname -r).img
+KERNEL=$LFS/boot/vmlinuz-5.9.0-rc3-chilios
+INITRD=$LFS/boot/initrd-5.9.0-rc3-chilios.img
 DESTKERNEL=$TEMPDIR/boot/vmlinuz
 DESTINITRD=$TEMPDIR/boot/initrd
 
@@ -42,12 +44,11 @@ function sh_ambiente()
 	[ -d livecd/virootfs ] && cp -aR livecd/virootfs $TEMPDIR
 
 	log_wait_msg "Copiando kernel $KERNEL to $DESTKERNEL"
-	#cp -f $KERNEL $TEMPDIR/boot/vmlinuz
-	#cp -f $KERNEL $LFS/boot/
+	cp -f $KERNEL $TEMPDIR/boot/vmlinuz
 	#rm -f $LFS/boot/vmlinuz
 
 	log_wait_msg "Copiando initrd $INITRD to $DESTINITRD"
-	#cp -f $INITRD $TEMPDIR/boot/initrd
+	cp -f $INITRD $TEMPDIR/boot/initrd
 	#cp -f $INITRD $LFS/boot/
 	#rm -f $LFS/boot/initrd
 
@@ -61,10 +62,10 @@ function sh_mksquashfs()
 {
 	log_wait_msg "Removendo OLD file squashfs root.sfs..."
 	rm -f $TEMPDIR/filesystem/root.sfs
-	#mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100% \
+#	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100% \
 	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1
-	#mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp lzma
-	#mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp lz4 -Xhc
+#  mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp lzma
+#  mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp lz4 -Xhc
 }
 
 function sh_mkiso()
@@ -108,17 +109,36 @@ function sh_mkiso()
 	#		-o $OUTPUT_ISO                              \
 	#		$TEMPDIR
 
+   #xorriso -as mkisofs \
+   #  -o $OUTPUT_ISO \
+   #  -isohybrid-mbr $ISOLINUXDIR/isohdpfx.bin    \
+   #  -c isolinux/boot.cat \
+   #  -b isolinux/isolinux.bin \
+   #   -no-emul-boot -boot-load-size 4 -boot-info-table \
+   #  -eltorito-alt-boot \
+   #  -e isolinux/efi.img \
+   #   -no-emul-boot \
+   #   -isohybrid-gpt-basdat \
+   #   $TEMPDIR
+
 	xorriso -as mkisofs \
 	  -o $OUTPUT_ISO \
 	  -isohybrid-mbr $ISOLINUXDIR/isohdpfx.bin    \
 	  -c isolinux/boot.cat \
+	  -c isolinux/boot.cat \
 	  -b isolinux/isolinux.bin \
-	   -no-emul-boot -boot-load-size 4 -boot-info-table \
+	  -no-emul-boot -boot-load-size 4 -boot-info-table \
 	  -eltorito-alt-boot \
 	  -e isolinux/efi.img \
-	   -no-emul-boot \
-	   -isohybrid-gpt-basdat \
-	   $TEMPDIR
+     -no-emul-boot \
+     -isohybrid-gpt-basdat \
+		-iso-level 3 \
+		-full-iso9660-filenames \
+		-joliet \
+		-joliet-long \
+		-rational-rock \
+		-volid "${VOL_ID}" \
+	  $TEMPDIR
 
 	#rm -fr $TEMPDIR
 	log_success_msg2 "Arquivo iso $OUTPUT_ISO criado com sucesso!"
