@@ -1,11 +1,6 @@
 #!/bin/bash
 . /lib/lsb/init-functions
 
-if [ $(id -u) != 0 ]; then
-	echo "$0 script need to run as root!"
-	exit 1
-fi
-
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 
 ARCH="x86_64"
@@ -22,10 +17,37 @@ LABEL="ChiliOS"
 DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
 OUTPUT_ISO="ChiliOS-$LFSVERSION-$ANOMESDIA-$ARCH.iso"
 isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32"
-KERNEL=$LFS/boot/vmlinuz-5.9.0-rc3-chilios
-INITRD=$LFS/boot/initrd-5.9.0-rc3-chilios.img
+#KERNEL=$LFS/boot/vmlinuz-5.9.0-rc3-chilios
+#INITRD=$LFS/boot/initrd-5.9.0-rc3-chilios.img
+KERNEL=$LFS/boot/vmlinuz-5.0.7-chilios
+INITRD=$LFS/boot/initrd-5.0.7-chilios.img
 DESTKERNEL=$TEMPDIR/boot/vmlinuz
 DESTINITRD=$TEMPDIR/boot/initrd
+COMPRESSION="gzip"
+CREATESFS=1
+
+# $1: message string
+_msg_info() {
+	local _msg="${1}"
+	[[ "${quiet}" == "y" ]] || printf '[%s] INFO: %s\n' "${app_name}" "${_msg}"
+}
+
+# $1: message string
+_msg_warning() {
+    local _msg="${1}"
+    printf '[%s] WARNING: %s\n' "${app_name}" "${_msg}" >&2
+}
+
+# $1: message string
+# $2: exit code number (with 0 does not exit)
+_msg_error() {
+    local _msg="${1}"
+    local _error=${2}
+    printf '[%s] ERROR: %s\n' "${app_name}" "${_msg}" >&2
+    if (( _error > 0 )); then
+        exit "${_error}"
+    fi
+}
 
 function sh_ambiente()
 {
@@ -62,10 +84,14 @@ function sh_mksquashfs()
 {
 	log_wait_msg "Removendo OLD file squashfs root.sfs..."
 	rm -f $TEMPDIR/filesystem/root.sfs
-#	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100% \
-	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1
-#  mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp lzma
-#  mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -ef exclude_dir -b 1M -comp lz4 -Xhc
+
+	case $COMPRESSION in
+		gzip)	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -comp gzip -Xcompression-level 1;;
+		xz)	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100%;;
+		zstd)	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1;;
+		lzma)	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp lzma;;
+	   lz4)	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp lz4 -Xhc;;
+   esac
 }
 
 function sh_mkiso()
@@ -150,27 +176,45 @@ function init()
    local s
 
    case "${1}" in
-      --NO|NO|-no|--no|no)          CREATESFS=0;;
-      --YES|YES|-yes|--yes|yes)     CREATESFS=1;;
-      *) 		                     shift;help "$@";;
+      --no)    CREATESFS=0;;
+      --yes)	CREATESFS=1;;
+      *) 	  	shift;help "$@";;
    esac
 }
 
-
-function help()
+function usage()
 {
-   echo -e "${cyan}Most used commands:"
-   echo -e "${pink}  --h,   --help,  help     ${reset}- display this help and exit"
-   echo -e "${pink}  --NO,  --no,    no       ${reset}- NAO cria squashfs, usa antigo"
-   echo -e "${pink}  --YES, --yes,   yes      ${reset}- cria squashfs"
+   echo -e "${cyan}Most used commands: ${0##*/}"
+   echo -e "   -h, display this help and exit"
+   echo -e "   -n, NAO cria squashfs, usa antigo"
+   echo -e "   -y, cria novo squashfs"
+   echo -e "   -x, usa compression XZ"
+   echo -e "   -z, usa compression ZSTD"
+   echo -e "   -g, usa cmpression GZIP (default0"
 	exit 1
 }
 
-if [[ $1 = "" ]] || [[ $1 = "-h" ]] || [[ $1 = "--help" ]] || [[ $1 = "help" ]] || [[ $1 = "-help" ]]; then
-   help
+#if [[ $1 = "" ]] || [[ $1 = "-h" ]] || [[ $1 = "--help" ]] || [[ $1 = "help" ]] || [[ $1 = "-help" ]]; then
+#   help
+#fi
+
+while getopts "yYnNhHxXzZgG" o; do
+    case "${o}" in
+    	y|Y)		CREATESFS=1;;
+      n|N)		CREATESFS=0;;
+      x|X)		COMPRESSION="xz";;
+      z|Z) 		COMPRESSION="zstd";;
+      g|G) 		COMPRESSION="gzip";;
+      *|h|H)	usage;;
+    esac
+done
+shift $((OPTIND-1))
+
+if (( EUID != 0 )); then
+	_msg_error "${app_name} must be run as root." 1
 fi
 
-init $*
+#init $*
 sh_ambiente
 if (( $CREATESFS )); then
 	sh_mksquashfs
@@ -178,3 +222,5 @@ else
 	log_wait_msg "Pulando filesystem squashfs..."
 fi
 sh_mkiso
+
+
