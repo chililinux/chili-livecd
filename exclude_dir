@@ -1,7 +1,7 @@
-/dev/
-/proc
-/run
-/sys
-/src
-/home/vcatafesta
-/tmp
+/lfs/full/dev/
+/lfs/full/proc
+/lfs/full/run
+/lfs/full/sys
+/lfs/full/src
+/lfs/full/home/vcatafesta
+/lfs/full/tmp
