@@ -1,13 +1,18 @@
 #!/bin/bash
-. /lib/lsb/init-functions
+source /lib/lsb/init-functions
+source /usr/share/fetch/core.sh
 
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 
-ARCH="x86_64"
+##########################################################
 LFSVERSION="base"
-LFS=/lfs/base
+LFS=/lfs
+LFSBASENAME=base
+##########################################################
+ARCH="x86_64"
+ORIGEM=$LFS/$LFSBASENAME
 LOCALDIR=$PWD
-TEMPDIR=/livecd/lfsbase
+TEMPDIR=/livecd/live/${LFSBASENAME}
 ISOLINUXDIR=$LOCALDIR/isolinux
 DISTRONAME="CHILIOS"
 DIAMES=$(date +"%Y%d")
@@ -15,12 +20,12 @@ ANOMESDIA=$(date +"%Y.%m.%d")
 VOL_ID="CHILIOS_${DIAMES}"
 LABEL="ChiliOS"
 DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
-OUTPUT_ISO="ChiliOS-$LFSVERSION-$ANOMESDIA-$ARCH.iso"
+OUTPUT_ISO="ChiliOS-lfs-$LFSVERSION-$ANOMESDIA-$ARCH.iso"
 isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32"
-#KERNEL=$LFS/boot/vmlinuz-5.9.0-rc3-chilios
-#INITRD=$LFS/boot/initrd-5.9.0-rc3-chilios.img
-KERNEL=$LFS/boot/vmlinuz-5.0.7-chilios
-INITRD=$LFS/boot/initrd-5.0.7-chilios.img
+#KERNEL=$LFS/$LFSBASENAME/boot/vmlinuz-5.0.7-chilios
+#INITRD=$LFS/$LFSBASENAME/boot/initrd-5.0.7-chilios.img
+KERNEL=$LFS/$LFSBASENAME/boot/vmlinuz-5.9.0-rc3-chilios
+INITRD=$LFS/$LFSBASENAME/boot/initrd-5.9.0-rc3-chilios.img
 DESTKERNEL=$TEMPDIR/boot/vmlinuz
 DESTINITRD=$TEMPDIR/boot/initrd
 COMPRESSION="gzip"
@@ -85,12 +90,15 @@ function sh_mksquashfs()
 	log_wait_msg "Removendo OLD file squashfs root.sfs..."
 	rm -f $TEMPDIR/filesystem/root.sfs
 
+debug "  ORIGEM : $ORIGEM\n" \
+		"DESTINO : $TEMPDIR/filesystem/root.sfs"
+
 	case $COMPRESSION in
-		gzip)	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -comp gzip -Xcompression-level 1;;
-		xz)	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100%;;
-		zstd)	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1;;
-		lzma)	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp lzma;;
-	   lz4)	mksquashfs $LFS $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp lz4 -Xhc;;
+		gzip)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -comp gzip -Xcompression-level 1;;
+		xz)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100%;;
+		zstd)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1;;
+		lzma)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp lzma;;
+	   lz4)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp lz4 -Xhc;;
    esac
 }
 

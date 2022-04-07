@@ -2,3 +2,4 @@ vmlinuz
 initrd
 *.iso
 *.sfs
+live/*
