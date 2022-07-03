@@ -11,7 +11,7 @@ sh_configure()
 	LFS=/mnt
 	LFSBASENAME=base
 	##########################################################
-	_VERSION='5.0.7-chilios'
+	_VERSION='5.18.9-chili'
 	ARCH="x86_64"
 	ORIGEM=$LFS/$LFSBASENAME
 	LOCALDIR=$PWD
