@@ -1,14 +1,15 @@
 #!/bin/bash
 source /lib/lsb/init-functions
 source /usr/share/fetch/core.sh
-
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
+set -e
 
 ##########################################################
 LFSVERSION="full"
-LFS=/lfs
-LFSBASENAME=full
+LFS=/mnt
+LFSBASENAME=base
 ##########################################################
+_VERSION='5.9.0-rc3-chilios'
 ARCH="x86_64"
 ORIGEM=$LFS/$LFSBASENAME
 LOCALDIR=$PWD
@@ -20,12 +21,11 @@ ANOMESDIA=$(date +"%Y.%m.%d")
 VOL_ID="CHILIOS_${DIAMES}"
 LABEL="ChiliOS"
 DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
-OUTPUT_ISO="ChiliOS-lfs-$LFSVERSION-$ANOMESDIA-$ARCH.iso"
-isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32"
-#KERNEL=$LFS/$LFSBASENAME/boot/vmlinuz-5.0.7-chilios
-#INITRD=$LFS/$LFSBASENAME/boot/initrd-5.0.7-chilios.img
-KERNEL=$LFS/$LFSBASENAME/boot/vmlinuz-5.9.0-rc3-chilios
-INITRD=$LFS/$LFSBASENAME/boot/initrd-5.9.0-rc3-chilios.img
+OUTPUT_ISO="ChiliOS-lfs-$LFSBASENAME-$ANOMESDIA-$ARCH.iso"
+isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
+model_files="chili10.jpg"
+KERNEL=${ORIGEM}/boot/vmlinuz-$_VERSION
+INITRD=${ORIGEM}/boot/initrd-$_VERSION.img
 DESTKERNEL=$TEMPDIR/boot/vmlinuz
 DESTINITRD=$TEMPDIR/boot/initrd
 COMPRESSION="gzip"
@@ -56,16 +56,22 @@ _msg_error() {
 
 function sh_ambiente()
 {
+	local lnotexist=0
 	log_wait_msg "Criando diretorio temporario $TEMPDIR"
-	#rm -fr $TEMPDIR
-	mkdir -p $TEMPDIR/{filesystem,isolinux,boot,boot/grub,efi/boot}
+ 	[[ -d $TEMPDIR ]] ||	lnotexist=1
+ 	[[ -d $TEMPDIR ]] ||	mkdir -p $TEMPDIR/{filesystem,isolinux,boot,boot/grub,efi/boot}
 
-	#log_wait_msg "Copiando alguns necessarios arquivos..."
-	#for file in $isolinux_files; do
-	#	cp $ISOLINUXDIR/$file $TEMPDIR/isolinux
-	#done
-	#cp $ISOLINUXDIR/efiboot.img $TEMPDIR/isolinux
-	#cp livecd/efi/boot/bootx64.efi $TEMPDIR/efi/boot
+	log_wait_msg "Copiando alguns necessarios arquivos..."
+#	for file in $isolinux_files; do
+#		cp $ISOLINUXDIR/$file $TEMPDIR/isolinux
+#	done
+#	cp $ISOLINUXDIR/efiboot.img $TEMPDIR/isolinux
+#	cp $LOCALDIR/model/efi/boot/bootx64.efi $TEMPDIR/efi/boot
+
+	if (( $lnotexist ))
+	then
+		cp -rpn $LOCALDIR/model/. $TEMPDIR/.
+	fi
 
 	echo "$DISTRONAME" > $TEMPDIR/isolinux/venomlive
 	[ -d livecd/virootfs ] && cp -aR livecd/virootfs $TEMPDIR
