@@ -8,10 +8,10 @@ sh_configure()
 {
 	##########################################################
 	LFSVERSION="full"
-	LFS=/mnt
-	LFSBASENAME=base
+	LFS=/lfs
+	LFSBASENAME=mazonos
 	##########################################################
-	_VERSION='5.18.9-chili'
+	_VERSION='4.18.5-mazonos'
 	ARCH="x86_64"
 	ORIGEM=$LFS/$LFSBASENAME
 	LOCALDIR=$PWD
