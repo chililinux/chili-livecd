@@ -12,6 +12,7 @@ sh_configure()
 	LFS=/lfs
 	LFSBASENAME=mazonos
 	##########################################################
+	COMPRESSION="zstd"
 	_VERSION='5.15.55-mazonos'
 	ARCH="x86_64"
 	ORIGEM=$LFS/$LFSBASENAME
@@ -30,7 +31,6 @@ sh_configure()
 	INITRD=${ORIGEM}/boot/initrd-$_VERSION.img
 	DESTKERNEL=$TEMPDIR/boot/vmlinuz
 	DESTINITRD=$TEMPDIR/boot/initrd
-	COMPRESSION="gzip"
 	CREATESFS=1
 }
 
