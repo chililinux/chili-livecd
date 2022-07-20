@@ -20,10 +20,10 @@ sh_configure()
 	ISOLINUXDIR=$LOCALDIR/isolinux
 	DIAMES=$(date +"%Y%d")
 	ANOMESDIA=$(date +"%Y.%m.%d")
-	VOL_ID="CHILIOS_${DIAMES}"
-	LABEL="ChiliOS"
+	VOL_ID="CHILI_${DIAMES}"
+	LABEL="Chili"
 	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
-	OUTPUT_ISO="ChiliOS-lfs-$LFSBASENAME-$ANOMESDIA-$ARCH.iso"
+	OUTPUT_ISO="Chili-lfs-$LFSBASENAME-$ANOMESDIA-$ARCH.iso"
 	isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
 	model_files="chili10.jpg"
 	KERNEL=${ORIGEM}/boot/vmlinuz-$_VERSION
