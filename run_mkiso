@@ -7,13 +7,13 @@ set -e
 sh_configure()
 {
 	##########################################################
-	DISTRONAME="MAZON"
+	DISTRONAME="CHILI"
 	LFSVERSION="full"
 	LFS=/lfs
-	LFSBASENAME=mazonos
+	LFSBASENAME=lfs.hd256
 	##########################################################
-	COMPRESSION="zstd"
-	_VERSION='5.15.55-mazonos'
+	COMPRESSION="gzip"
+	_VERSION='5.17.2-chili'
 	ARCH="x86_64"
 	ORIGEM=$LFS/$LFSBASENAME
 	LOCALDIR=$PWD
@@ -103,7 +103,7 @@ debug "  ORIGEM : $ORIGEM\n" \
 		"DESTINO : $TEMPDIR/filesystem/root.sfs"
 
 	case $COMPRESSION in
-		gzip)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -comp gzip -Xcompression-level 9;;
+		gzip)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -comp gzip -Xcompression-level 1;;
 		xz)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100%;;
 		zstd)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1;;
 		lzma)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp lzma;;
