@@ -103,7 +103,7 @@ debug "  ORIGEM : $ORIGEM\n" \
 		"DESTINO : $TEMPDIR/filesystem/root.sfs"
 
 	case $COMPRESSION in
-		gzip)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -comp gzip -Xcompression-level 1;;
+		gzip)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -comp gzip -Xcompression-level 9;;
 		xz)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100%;;
 		zstd)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1;;
 		lzma)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp lzma;;
