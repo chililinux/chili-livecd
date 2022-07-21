@@ -12,7 +12,7 @@ sh_configure()
 	LFS=/lfs
 	LFSBASENAME=mazonos
 	##########################################################
-	COMPRESSION="gzip"
+	COMPRESSION="zstd"
 	_VERSION='5.15.55-mazonos'
 	ARCH="x86_64"
 	ORIGEM=$LFS/$LFSBASENAME
