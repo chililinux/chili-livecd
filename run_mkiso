@@ -7,13 +7,13 @@ set -e
 sh_configure()
 {
 	##########################################################
-	DISTRONAME="CHILI"
-	LFSVERSION="full"
+	DISTRONAME="MAZON"
+	LFSVERSION="live"
 	LFS=/lfs
-	LFSBASENAME=lfs.hd256
+	LFSBASENAME=mazonos
 	##########################################################
 	COMPRESSION="gzip"
-	_VERSION='5.17.2-chili'
+	_VERSION='5.15.55-mazonos'
 	ARCH="x86_64"
 	ORIGEM=$LFS/$LFSBASENAME
 	LOCALDIR=$PWD
@@ -21,8 +21,8 @@ sh_configure()
 	ISOLINUXDIR=$LOCALDIR/isolinux
 	DIAMES=$(date +"%Y%d")
 	ANOMESDIA=$(date +"%Y.%m.%d")
-	VOL_ID="CHILI_${DIAMES}"
-	LABEL="Chili"
+	VOL_ID="${DISTRONAME}_${DIAMES}"
+	LABEL="$DISTRONAME"
 	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
 	OUTPUT_ISO="Chili-lfs-$LFSBASENAME-$ANOMESDIA-$ARCH.iso"
 	isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
