@@ -7,10 +7,10 @@ set -e
 sh_configure()
 {
 	##########################################################
-	DISTRONAME="MAZON"
+	DISTRONAME="CHILI"
 	LFSVERSION="live"
 	LFS=/lfs
-	LFSBASENAME=mazonos
+	LFSBASENAME=chilios
 	##########################################################
 	COMPRESSION="xz"
 	_VERSION='5.15.55-mazonos'
@@ -24,7 +24,7 @@ sh_configure()
 	VOL_ID="${DISTRONAME}_${DIAMES}"
 	LABEL="$DISTRONAME"
 	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
-	OUTPUT_ISO="Chili-lfs-$LFSBASENAME-$ANOMESDIA-$ARCH.iso"
+	OUTPUT_ISO="$DISTRONOME-$LFVERSION-$LFSBASENAME-$ANOMESDIA-$ARCH.iso"
 	isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
 	model_files="chili10.jpg"
 	KERNEL=${ORIGEM}/boot/vmlinuz-$_VERSION
