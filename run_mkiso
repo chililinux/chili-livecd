@@ -2,19 +2,20 @@
 #source /lib/lsb/init-functions
 #source /usr/share/fetch/core.sh
 app_name="${0##*/}"
+CREATESFS=1
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 set -e
 
 sh_configure()
 {
 	##########################################################
-	DISTRONAME="CHILI"
+	DISTRONAME="MAZON"
 	LFSVERSION="live"
 	LFS=/lfs
-	LFSBASENAME=full
+	LFSBASENAME=mazon-beta
 	##########################################################
 	COMPRESSION="gzip"
-	_VERSION='5.8.0-chilios'
+	_VERSION='4.18.5-mazonos'
 	ARCH="x86_64"
 	ORIGEM="$LFS/$LFSBASENAME"
 	LOCALDIR="$PWD"
@@ -31,7 +32,6 @@ sh_configure()
 	INITRD="${ORIGEM}/boot/initrd-$_VERSION.img"
 	DESTKERNEL="$TEMPDIR/boot/vmlinuz"
 	DESTINITRD="$TEMPDIR/boot/initrd"
-	CREATESFS=1
 }
 
 setvarcolors()
@@ -233,7 +233,7 @@ sh_mkiso()
 
 	xorriso -as mkisofs \
 	  -o "out/$OUTPUT_ISO" \
-	  -isohybrid-mbr "$ISOLINUXDIR"/isohdpfx.bin    \
+	  -isohybrid-mbr "$ISOLINUXDIR/isohdpfx.bin"    \
 	  -c isolinux/boot.cat \
 	  -c isolinux/boot.cat \
 	  -b isolinux/isolinux.bin \

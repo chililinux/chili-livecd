@@ -1,6 +1,0 @@
-$LFS/$LFSBASE/dev
-$LFS/$LFSBASE/proc
-$LFS/$LFSBASE/run
-$LFS/$LFSBASE/sys
-$LFS/$LFSBASE/src
-$LFS/$LFSBASE/tmp
