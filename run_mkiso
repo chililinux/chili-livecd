@@ -1,6 +1,8 @@
 #!/bin/bash
 #source /lib/lsb/init-functions
 #source /usr/share/fetch/core.sh
+#usermod -d /home/new_user -m user
+#usermod -l new_user user
 app_name="${0##*/}"
 CREATESFS=1
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
@@ -12,10 +14,10 @@ sh_configure()
 	DISTRONAME="CHILI"
 	LFSVERSION="live"
 	LFS=/lfs
-	LFSBASENAME=lfs
+	LFSBASENAME=mazonos
 	##########################################################
 	COMPRESSION="gzip"
-	_VERSION='5.17.2-chili'
+	_VERSION='5.15.55-mazonos'
 	ARCH="x86_64"
 	ORIGEM="$LFS/$LFSBASENAME"
 	LOCALDIR="$PWD"
