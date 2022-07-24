@@ -1,11 +1,12 @@
 #!/bin/bash
 #source /lib/lsb/init-functions
-source /usr/share/fetch/core.sh
+#source /usr/share/fetch/core.sh
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 set -e
 
 sh_configure()
 {
+	app_name="${0##*/}"
 	##########################################################
 	DISTRONAME="CHILI"
 	LFSVERSION="live"
@@ -15,28 +16,67 @@ sh_configure()
 	COMPRESSION="gzip"
 	_VERSION='5.8.0-chilios'
 	ARCH="x86_64"
-	ORIGEM=$LFS/$LFSBASENAME
-	LOCALDIR=$PWD
-	TEMPDIR=/livecd/live/${LFSBASENAME}
-	ISOLINUXDIR=$LOCALDIR/isolinux
+	ORIGEM="$LFS/$LFSBASENAME"
+	LOCALDIR="$PWD"
+	TEMPDIR="/livecd/live/${LFSBASENAME}"
+	ISOLINUXDIR="$LOCALDIR/isolinux"
 	DIAMES=$(date +"%Y%d")
 	ANOMESDIA=$(date +"%Y.%m.%d")
 	VOL_ID="${DISTRONAME}_${DIAMES}"
-	DIAHORA=`date +"%d%m%Y-%T" | sed 's/://g'`
+	DIAHORA=$(date +"%d%m%Y-%T" | sed 's/://g')
 	OUTPUT_ISO="$DISTRONAME-$LFSVERSION-$LFSBASENAME-$ANOMESDIA-$ARCH.iso"
 	isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
 	model_files="chili10.jpg"
-	KERNEL=${ORIGEM}/boot/vmlinuz-$_VERSION
-	INITRD=${ORIGEM}/boot/initrd-$_VERSION.img
-	DESTKERNEL=$TEMPDIR/boot/vmlinuz
-	DESTINITRD=$TEMPDIR/boot/initrd
+	KERNEL="${ORIGEM}/boot/vmlinuz-$_VERSION"
+	INITRD="${ORIGEM}/boot/initrd-$_VERSION.img"
+	DESTKERNEL="$TEMPDIR/boot/vmlinuz"
+	DESTINITRD="$TEMPDIR/boot/initrd"
 	CREATESFS=1
+}
+
+setvarcolors()
+{
+   if tput setaf 1 &> /dev/null; then
+      tput sgr0; # reset colors
+      bold=$(tput bold);
+      reset=$(tput sgr0);
+      rst=$(tput sgr0);
+      rs=$(tput sgr0);
+      blue=$(tput setaf 33);
+      cyan=$(tput setaf 37);
+      green=$(tput setaf 2);
+      orange=$(tput setaf 166);
+      purple=$(tput setaf 125);
+      red=$(tput setaf 124);
+      violet=$(tput setaf 61);
+      white=$(tput setaf 15);
+      yellow=$(tput setaf 136);
+      pink=$(tput setaf 129);
+      black=$(tput setaf 0);
+   else
+      bold='';
+      reset="\e[0m";
+      rst="\e[0m";
+      rs="\e[0m";
+      reset="\e[0m";
+      blue="\e[1;34m";
+      cyan="\e[1;36m";
+      green="\e[1;32m";
+      orange="\e[1;33m";
+      purple="\e[1;35m";
+      red="\e[1;31m";
+      violet="\e[1;35m";
+      white="\e[1;37m";
+      yellow="\e[1;33m";
+      pink="\033[35;1m";
+      black="\e[1;30m";
+   fi
 }
 
 # $1: message string
 _msg_info() {
 	local _msg="${1}"
-	[[ "${quiet}" == "y" ]] || printf '[%s] INFO: %s\n' "${app_name}" "${_msg}"
+	[[ "${quiet}" == "y" ]] || printf '[%s] INFO: %s\n' "${cyan}${app_name}${reset}" "${_msg}"
 }
 
 # $1: message string
@@ -49,7 +89,7 @@ _msg_warning() {
 # $2: exit code number (with 0 does not exit)
 _msg_error() {
     local _msg="${1}"
-    local _error=${2}
+    local _error="${2}"
     printf '[%s] ERROR: %s\n' "${app_name}" "${_msg}" >&2
     if (( _error > 0 )); then
         exit "${_error}"
@@ -59,31 +99,31 @@ _msg_error() {
 sh_ambiente()
 {
 	local lnotexist=0
-	log_wait_msg "Criando diretorio temporario $TEMPDIR"
- 	[[ -d $TEMPDIR ]] ||	lnotexist=1
- 	[[ -d $TEMPDIR ]] ||	mkdir -p $TEMPDIR/{filesystem,isolinux,boot,boot/grub,efi/boot}
+	_msg_info "Criando diretorio temporario $TEMPDIR"
+ 	[[ -d "$TEMPDIR" ]] ||	lnotexist=1
+ 	[[ -d "$TEMPDIR" ]] ||	mkdir -p "$TEMPDIR"/{filesystem,isolinux,boot,boot/grub,efi/boot}
 
-	log_wait_msg "Copiando alguns necessarios arquivos..."
+	_msg_info "Copiando alguns necessarios arquivos..."
 #	for file in $isolinux_files; do
 #		cp $ISOLINUXDIR/$file $TEMPDIR/isolinux
 #	done
 #	cp $ISOLINUXDIR/efiboot.img $TEMPDIR/isolinux
 #	cp $LOCALDIR/model/efi/boot/bootx64.efi $TEMPDIR/efi/boot
 
-	if (( $lnotexist ))
+	if (( lnotexist ))
 	then
-		cp -rpn $LOCALDIR/model/. $TEMPDIR/.
+		cp -rpn "$LOCALDIR"/model/. "$TEMPDIR"/.
 	fi
 
-	echo "$DISTRONAME" > $TEMPDIR/isolinux/venomlive
-	[ -d livecd/virootfs ] && cp -aR livecd/virootfs $TEMPDIR
+	echo "$DISTRONAME" > "$TEMPDIR/isolinux/venomlive"
+	[ -d livecd/virootfs ] && cp -aR livecd/virootfs "$TEMPDIR"
 
-	log_wait_msg "Copiando kernel $KERNEL to $DESTKERNEL"
-	cp -f $KERNEL $TEMPDIR/boot/vmlinuz
+	_msg_info "Copiando kernel $KERNEL to $DESTKERNEL"
+	cp -f "$KERNEL" "$TEMPDIR/boot/vmlinuz"
 	#rm -f $LFS/boot/vmlinuz
 
-	log_wait_msg "Copiando initrd $INITRD to $DESTINITRD"
-	cp -f $INITRD $TEMPDIR/boot/initrd
+	_msg_info "Copiando initrd $INITRD to $DESTINITRD"
+	cp -f "$INITRD" "$TEMPDIR/boot/initrd"
 	#cp -f $INITRD $LFS/boot/
 	#rm -f $LFS/boot/initrd
 
@@ -93,22 +133,37 @@ sh_ambiente()
 	#popd &>/dev/null
 }
 
+info()
+{
+#  dialog                     \
+   whiptail                   \
+   	--fb  						\
+      --title     "[debug]$0" \
+      --backtitle "[debug]$0"	\
+      --yesno     "${*}\n" 	\
+   0 0
+   result=$?
+   if (( result )); then
+      exit
+   fi
+   return $result
+}
+
 sh_mksquashfs()
 {
  	if [[ -e "$TEMPDIR/filesystem/root.sfs" ]]; then
-		log_wait_msg "Removendo OLD file squashfs root.sfs..."
+		_msg_info "Removendo OLD file squashfs root.sfs..."
 		rm -f $TEMPDIR/filesystem/root.sfs
 	fi
 
-debug "  ORIGEM : $ORIGEM\n" \
-		"DESTINO : $TEMPDIR/filesystem/root.sfs"
+	info "  ORIGEM : $ORIGEM\n" "DESTINO : $TEMPDIR/filesystem/root.sfs"
 
 	case $COMPRESSION in
-		gzip)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -comp gzip -Xcompression-level 1;;
-		xz)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100%;;
-		zstd)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1;;
-		lzma)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp lzma;;
-	   lz4)	mksquashfs $ORIGEM $TEMPDIR/filesystem/root.sfs -noappend -ef exclude_dir -b 1M -comp lz4 -Xhc;;
+		gzip)	mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/root.sfs" -noappend -ef exclude_dir -comp gzip -Xcompression-level 1;;
+		xz)	mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/root.sfs" -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100%;;
+		zstd)	mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/root.sfs" -noappend -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1;;
+		lzma)	mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/root.sfs" -noappend -ef exclude_dir -b 1M -comp lzma;;
+	   lz4)	mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/root.sfs" -noappend -ef exclude_dir -b 1M -comp lz4 -Xhc;;
    esac
 }
 
@@ -119,10 +174,10 @@ sh_mkiso()
  	fi
 
  	if [[ -e "$OUTPUT_ISO" ]]; then
-		log_wait_msg "Excluindo .iso antigo..."
-		rm -f $OUTPUT_ISO
+		_msg_info "Excluindo .iso antigo..."
+		rm -f "$OUTPUT_ISO"
 	fi
-	log_wait_msg "Criando iso $OUTPUT_ISO..."
+	_msg_info "Criando iso $OUTPUT_ISO..."
 
 	#MBR
 	#xorriso -as mkisofs                                 \
@@ -172,8 +227,8 @@ sh_mkiso()
    #   $TEMPDIR
 
 	xorriso -as mkisofs \
-	  -o out/$OUTPUT_ISO \
-	  -isohybrid-mbr $ISOLINUXDIR/isohdpfx.bin    \
+	  -o "out/$OUTPUT_ISO" \
+	  -isohybrid-mbr "$ISOLINUXDIR"/isohdpfx.bin    \
 	  -c isolinux/boot.cat \
 	  -c isolinux/boot.cat \
 	  -b isolinux/isolinux.bin \
@@ -196,7 +251,7 @@ sh_mkiso()
 
 init()
 {
-   local param=$@
+   local param=$*
    local s
 
    case "${1}" in
@@ -215,6 +270,7 @@ usage()
    echo -e "   -x, usa compression XZ"
    echo -e "   -z, usa compression ZSTD"
    echo -e "   -g, usa cmpression GZIP (default)"
+   echo -e "   -q, quiet"
 	exit 1
 }
 
@@ -222,14 +278,16 @@ usage()
 #   help
 #fi
 
-while getopts "yYnNhHxXzZgG" o; do
+while getopts "yYnNhHxXzZgGqQ" o; do
     case "${o}" in
+    	q|Q)		quiet='y';;
     	y|Y)		CREATESFS=1;;
       n|N)		CREATESFS=0;;
       x|X)		COMPRESSION="xz";;
       z|Z) 		COMPRESSION="zstd";;
       g|G) 		COMPRESSION="gzip";;
-      *|h|H)	usage;;
+      h|H)		usage;;
+      *)			usage;;
     esac
 done
 shift $((OPTIND-1))
@@ -238,6 +296,7 @@ if (( EUID != 0 )); then
 	_msg_error "${app_name} must be run as root." 1
 fi
 
+setvarcolors
 sh_configure
 #init $*
 sh_ambiente
@@ -245,10 +304,10 @@ if (( CREATESFS )); then
 	sh_mksquashfs
 else
  	if ! [[ -e "$TEMPDIR/filesystem/root.sfs" ]]; then
-		log_wait_msg "filesystem squashfs nao localizado, reconstruindo..."
-		sh_mksquashfs
+		_msg_info "filesystem squashfs nao localizado, reconstruindo..."
+		_msg_info
 	else
-		log_wait_msg "Pulando filesystem squashfs..."
+		_msg_info "Pulando filesystem squashfs..."
 	fi
 fi
 sh_mkiso
