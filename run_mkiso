@@ -14,7 +14,7 @@ sh_configure()
 	DISTRONAME="CHILI"
 	LFSVERSION="live"
 	LFS=/lfs
-	LFSBASENAME=mazonos
+	LFSBASENAME=systemv
 	##########################################################
 	COMPRESSION="gzip"
 	_VERSION='5.15.55-mazonos'
