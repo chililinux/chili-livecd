@@ -106,7 +106,7 @@ run_image() {
         -device "scsi-${mediatype%rom},bus=scsi0.0,drive=${mediatype}0" \
         -drive "id=${mediatype}0,if=none,format=raw,media=${mediatype/hd/disk},read-only=on,file=${image}" \
         -display "${display}" \
-		  -device qxl-vga,vgamem_mb=128 \
+        -vga std \
         -audiodev pa,id=snd0,server=localhost \
         -device ich9-intel-hda \
         -device hda-output,audiodev=snd0 \
