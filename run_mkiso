@@ -1,12 +1,12 @@
 #!/bin/bash
 #source /lib/lsb/init-functions
 #source /usr/share/fetch/core.sh
+app_name="${0##*/}"
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 set -e
 
 sh_configure()
 {
-	app_name="${0##*/}"
 	##########################################################
 	DISTRONAME="CHILI"
 	LFSVERSION="live"
@@ -99,6 +99,11 @@ _msg_error() {
 sh_ambiente()
 {
 	local lnotexist=0
+
+	_msg_info "Criando ISO: ${yellow}$OUTPUT_ISO${reset}"
+	_msg_info "ORIGEM : ${orange}$ORIGEM${reset}"
+	_msg_info "DESTINO: ${orange}$TEMPDIR/filesystem/root.sfs${reset}"
+
 	_msg_info "Criando diretorio temporario $TEMPDIR"
  	[[ -d "$TEMPDIR" ]] ||	lnotexist=1
  	[[ -d "$TEMPDIR" ]] ||	mkdir -p "$TEMPDIR"/{filesystem,isolinux,boot,boot/grub,efi/boot}
@@ -156,7 +161,7 @@ sh_mksquashfs()
 		rm -f $TEMPDIR/filesystem/root.sfs
 	fi
 
-	info "  ORIGEM : $ORIGEM\n" "DESTINO : $TEMPDIR/filesystem/root.sfs"
+#	info "  ORIGEM : $ORIGEM\n" "DESTINO : $TEMPDIR/filesystem/root.sfs"
 
 	case $COMPRESSION in
 		gzip)	mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/root.sfs" -noappend -ef exclude_dir -comp gzip -Xcompression-level 1;;
@@ -246,7 +251,7 @@ sh_mkiso()
 	  $TEMPDIR
 
 	#rm -fr $TEMPDIR
-	log_success_msg2 "Arquivo iso $PWD/out/$OUTPUT_ISO criado com sucesso!"
+	_msg_info "Arquivo iso ${red}$PWD/out/$OUTPUT_ISO${reset} criado com sucesso!"
 }
 
 init()
@@ -263,17 +268,19 @@ init()
 
 usage()
 {
-   echo -e "${cyan}Most used commands: ${0##*/}"
-   echo -e "   -h, display this help and exit"
-   echo -e "   -n, NAO cria squashfs, usa antigo"
-   echo -e "   -y, cria novo squashfs"
-   echo -e "   -x, usa compression XZ"
-   echo -e "   -z, usa compression ZSTD"
-   echo -e "   -g, usa cmpression GZIP (default)"
-   echo -e "   -q, quiet"
+   echo -e "${orange}uso${green}:${white}  ${app_name} ${green}<${white}operação${green}> [${white}...${green}]${reset}"
+   echo -e "operações:"
+   echo -e "${pink}  -h${cyan}, display this help and exit"
+   echo -e "${pink}  -n${cyan}, NAO cria squashfs, usa antigo"
+   echo -e "${pink}  -y${cyan}, cria novo squashfs"
+   echo -e "${pink}  -x${cyan}, usa compression XZ"
+   echo -e "${pink}  -z${cyan}, usa compression ZSTD"
+   echo -e "${pink}  -g${cyan}, usa cmpression GZIP (default)"
+   echo -e "${pink}  -q${cyan}, quiet"
 	exit 1
 }
 
+setvarcolors
 #if [[ $1 = "" ]] || [[ $1 = "-h" ]] || [[ $1 = "--help" ]] || [[ $1 = "help" ]] || [[ $1 = "-help" ]]; then
 #   help
 #fi
@@ -296,7 +303,6 @@ if (( EUID != 0 )); then
 	_msg_error "${app_name} must be run as root." 1
 fi
 
-setvarcolors
 sh_configure
 #init $*
 sh_ambiente
