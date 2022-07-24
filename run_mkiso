@@ -12,10 +12,10 @@ sh_configure()
 	DISTRONAME="CHILI"
 	LFSVERSION="live"
 	LFS=/lfs
-	LFSBASENAME=remast
+	LFSBASENAME=lfs
 	##########################################################
 	COMPRESSION="gzip"
-	_VERSION='4.18.5-mazonos'
+	_VERSION='5.17.2-chili'
 	ARCH="x86_64"
 	ORIGEM="$LFS/$LFSBASENAME"
 	LOCALDIR="$PWD"
