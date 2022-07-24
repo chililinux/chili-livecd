@@ -9,10 +9,10 @@ set -e
 sh_configure()
 {
 	##########################################################
-	DISTRONAME="MAZON"
+	DISTRONAME="CHILI"
 	LFSVERSION="live"
 	LFS=/lfs
-	LFSBASENAME=mazon-beta
+	LFSBASENAME=remast
 	##########################################################
 	COMPRESSION="gzip"
 	_VERSION='4.18.5-mazonos'
@@ -21,9 +21,9 @@ sh_configure()
 	LOCALDIR="$PWD"
 	TEMPDIR="/livecd/live/${LFSBASENAME}"
 	ISOLINUXDIR="$LOCALDIR/isolinux"
-	DIAMES=$(date +"%Y%d")
+	ANOMES=$(date +"%Y%m")
 	ANOMESDIA=$(date +"%Y.%m.%d")
-	VOL_ID="${DISTRONAME}_${DIAMES}"
+	VOL_ID="${DISTRONAME}_${ANOMES}"
 	DIAHORA=$(date +"%d%m%Y-%T" | sed 's/://g')
 	OUTPUT_ISO="$DISTRONAME-$LFSVERSION-$LFSBASENAME-$ANOMESDIA-$ARCH.iso"
 	isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
@@ -101,6 +101,7 @@ sh_ambiente()
 	local lnotexist=0
 
 	_msg_info "Criando ISO: ${yellow}$OUTPUT_ISO${reset}"
+	_msg_info "LABEL  : ${yellow}$VOL_ID${reset}"
 	_msg_info "ORIGEM : ${orange}$ORIGEM${reset}"
 	_msg_info "DESTINO: ${orange}$TEMPDIR/filesystem/root.sfs${reset}"
 
