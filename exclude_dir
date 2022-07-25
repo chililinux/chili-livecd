@@ -1,7 +1,3 @@
 /lfs/lfs/repo
 /lfs/lfs/sources
 /lfs/systemv/usr/src
-/lfs/systemv/proc
-/lfs/systemv/dev
-/lfs/systemv/sys
-/lfs/systemv/tmp
