@@ -3,6 +3,12 @@
 #source /usr/share/fetch/core.sh
 #usermod -d /home/new_user -m user
 #usermod -l new_user user
+
+#debug
+#export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+#set -x
+
+#global system
 app_name="${0##*/}"
 CREATESFS=1
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
