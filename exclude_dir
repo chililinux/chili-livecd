@@ -1,3 +1,7 @@
 /lfs/lfs/repo
 /lfs/lfs/sources
 /lfs/systemv/usr/src
+/lfs/lfs.hd256/sources
+/lfs/lfs.hd256/repo
+/lfs/lfs.hd256/srv
+/lfs/lfs.hd256/github
