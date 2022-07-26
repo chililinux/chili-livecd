@@ -76,7 +76,8 @@ setvarcolors()
 }
 
 # $1: message string
-_msg_info() {
+_msg_info()
+{
 	local _msg="${1}"
 	[[ "${quiet}" == "y" ]] || printf '[%s] INFO: %s\n' "${cyan}${app_name}${reset}" "${_msg}"
 }
