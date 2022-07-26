@@ -1,6 +1,4 @@
 #!/bin/bash
-#source /lib/lsb/init-functions
-#source /usr/share/fetch/core.sh
 #usermod -d /home/new_user -m user
 #usermod -l new_user user
 
@@ -9,6 +7,8 @@
 #set -x
 
 #global system
+_VERSION_='1.58.20220725'
+DEPENDENCIES=(printf tput xorriso mksquashfs stat whiptail)
 app_name="${0##*/}"
 CREATESFS=1
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
@@ -38,6 +38,27 @@ sh_configure()
 	INITRD="${ORIGEM}/boot/initrd-$_VERSION.img"
 	DESTKERNEL="$TEMPDIR/boot/vmlinuz"
 	DESTINITRD="$TEMPDIR/boot/initrd"
+}
+
+maxcol()
+{
+	COLUMNS=$(stty size)
+   COLUMNS=${COLUMNS##* }
+	(( COLUMNS <= 0  )) && COLUMNS=80
+	echo $COLUMNS
+}
+
+# $1 - caractere
+# $2 - tamanho
+replicate()
+{
+   #  Repete um caractere um determinado número de vezes
+   #+ Recebe:
+   #+  Tamanho final da cadeia
+   #+  e caractere a ser repetido
+   local Var
+   printf -v Var %"$2"s " "  #  Coloca em $Var $1 espaços
+   echo "${Var// /$1}"       #  Troca os espaços pelo caractere escolhido
 }
 
 setvarcolors()
@@ -79,7 +100,7 @@ setvarcolors()
 _msg_info()
 {
 	local _msg="${1}"
-	[[ "${quiet}" == "y" ]] || printf '[%s] INFO: %s\n' "${cyan}${app_name}${reset}" "${_msg}"
+	[[ "${quiet}" == "y" ]] || printf "[%s] ${yellow}INFO${reset}: %s\n" "${red}${app_name}${reset}" "${_msg}"
 }
 
 # $1: message string
@@ -102,11 +123,11 @@ _msg_error() {
 sh_ambiente()
 {
 	local lnotexist=0
-
-	_msg_info "Criando ISO: ${yellow}$OUTPUT_ISO${reset}"
-	_msg_info "LABEL  : ${yellow}$VOL_ID${reset}"
-	_msg_info "ORIGEM : ${orange}$ORIGEM${reset}"
-	_msg_info "DESTINO: ${orange}$TEMPDIR/filesystem/root.sfs${reset}"
+	replicate '#' "$(maxcol)"
+	_msg_info "Criando ISO: ${cyan}$OUTPUT_ISO${reset}"
+	_msg_info "ISO LABEL  : ${cyan}$VOL_ID${reset}"
+	_msg_info "ISO ORIGEM : ${cyan}$ORIGEM${reset}"
+	_msg_info "DESTINO    : ${cyan}$TEMPDIR/filesystem/root.sfs${reset}"
 
 	_msg_info "Criando diretorio temporario $TEMPDIR"
  	[[ -d "$TEMPDIR" ]] ||	lnotexist=1
@@ -129,22 +150,14 @@ sh_ambiente()
 
 	_msg_info "Copiando kernel $KERNEL to $DESTKERNEL"
 	cp -f "$KERNEL" "$TEMPDIR/boot/vmlinuz"
-	#rm -f $LFS/boot/vmlinuz
 
 	_msg_info "Copiando initrd $INITRD to $DESTINITRD"
 	cp -f "$INITRD" "$TEMPDIR/boot/initrd"
-	#cp -f $INITRD $LFS/boot/
-	#rm -f $LFS/boot/initrd
-
-	#pushd $LFS/boot &>/dev/null
-	#ln -sf vmlinuz-$(uname -r) vmlinuz
-	#ln -sf initrd-$(uname -r).img initrd
-	#popd &>/dev/null
+	replicate '#' "$(maxcol)"
 }
 
 info()
 {
-#  dialog                     \
    whiptail                   \
    	--fb  						\
       --title     "[debug]$0" \
@@ -263,7 +276,7 @@ init()
    case "${1}" in
       --no)    CREATESFS=0;;
       --yes)	CREATESFS=1;;
-      *) 	  	shift;help "$@";;
+      *) 	  	shift;usage;;
    esac
 }
 
@@ -281,40 +294,69 @@ usage()
 	exit 1
 }
 
-setvarcolors
-#if [[ $1 = "" ]] || [[ $1 = "-h" ]] || [[ $1 = "--help" ]] || [[ $1 = "help" ]] || [[ $1 = "-help" ]]; then
-#   help
-#fi
+check_deps()
+{
+   local errorFound=0
+   declare -a missing
 
-while getopts "yYnNhHxXzZgGqQ" o; do
-    case "${o}" in
-    	q|Q)		quiet='y';;
-    	y|Y)		CREATESFS=1;;
-      n|N)		CREATESFS=0;;
-      x|X)		COMPRESSION="xz";;
-      z|Z) 		COMPRESSION="zstd";;
-      g|G) 		COMPRESSION="gzip";;
-      h|H)		usage;;
-      *)			usage;;
-    esac
-done
-shift $((OPTIND-1))
+   for d in "${DEPENDENCIES[@]}" ; {
+      [[ -z $(command -v "$d") ]] && missing+=("$d") && errorFound=1 && printf '%s\n' "${red}ERRO${reset}: não encontrei o comando ${orange}'$d'${reset}"
+   }
+   #[[ ${#missing[@]} -ne 0 ]]
+   if (( errorFound )); then
+      erro "#### IMPOSSÍVEL CONTINUAR ####"
+      msg "Esse script precisa dos comandos listados acima" >&2
+      msg "Instale-os e/ou verifique se estão no seu \$PATH" >&2
+      exit 1
+   fi
+}
 
-if (( EUID != 0 )); then
-	_msg_error "${app_name} must be run as root." 1
-fi
-
-sh_configure
-#init $*
-sh_ambiente
-if (( CREATESFS )); then
-	sh_mksquashfs
-else
- 	if ! [[ -e "$TEMPDIR/filesystem/root.sfs" ]]; then
-		_msg_info "filesystem squashfs nao localizado, reconstruindo..."
-		_msg_info
+sh_domkiso()
+{
+	if (( CREATESFS )); then
+		sh_mksquashfs
 	else
-		_msg_info "Pulando filesystem squashfs..."
+	 	if ! [[ -e "$TEMPDIR/filesystem/root.sfs" ]]; then
+			_msg_info "filesystem squashfs nao localizado, reconstruindo..."
+			_msg_info
+		else
+			_msg_info "Pulando filesystem squashfs..."
+		fi
 	fi
-fi
-sh_mkiso
+	sh_mkiso
+}
+
+main()
+{
+	setvarcolors
+	check_deps
+
+	if [[ "$1" = "-h" ]] || [[ "$1" = "--help" ]] || [[ "$1" = "help" ]] || [[ "$1" = "-help" ]]; then
+		usage
+	fi
+
+	while getopts "yYnNhHxXzZgGqQ" o; do
+	    case "${o}" in
+	    	q|Q)		quiet='y';;
+	    	y|Y)		CREATESFS=1;;
+	      n|N)		CREATESFS=0;;
+	      x|X)		COMPRESSION="xz";;
+	      z|Z) 		COMPRESSION="zstd";;
+	      g|G) 		COMPRESSION="gzip";;
+	      h|H)		usage;;
+	      *)			usage;;
+	    esac
+	done
+	shift $((OPTIND-1))
+
+	if (( EUID != 0 )); then
+		_msg_error "${app_name} must be run as root." 1
+	fi
+
+	sh_configure
+	#init $*
+	sh_ambiente
+	sh_domkiso
+}
+
+main "$@"
