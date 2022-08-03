@@ -20,10 +20,10 @@ sh_configure()
 	DISTRONAME="CHILI"
 	LFSVERSION="live"
 	LFS=/lfs
-	LFSBASENAME=lfs.hd256
+	LFSBASENAME=mazon
 	##########################################################
 	COMPRESSION="gzip"
-	_VERSION='5.17.2-chili'
+	_VERSION='5.1.3-mzn'
 	ARCH="x86_64"
 	ORIGEM="$LFS/$LFSBASENAME"
 	LOCALDIR="$PWD"
