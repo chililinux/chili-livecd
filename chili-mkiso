@@ -17,13 +17,13 @@ set -e
 sh_configure()
 {
 	##########################################################
-	DISTRONAME="MAZON"
+	DISTRONAME="CHILI"
 	LFSVERSION="live"
 	LFS=/lfs
-	LFSBASENAME=mazon
+	LFSBASENAME=chili-base-5.0.9
 	##########################################################
 	COMPRESSION="gzip"
-	_VERSION='5.15.55-mazonos'
+	_VERSION='5.9.0-rc3-chilios'
 	ARCH="x86_64"
 	ORIGEM="$LFS/$LFSBASENAME"
 	LOCALDIR="$PWD"
