@@ -1,9 +1,13 @@
 /lfs/chili-base-5.0.9/packages/
-
+/lfs/mazon_dev/blfs_root/
+/lfs/mazon_dev/jhalfs/
+/lfs/mazon_dev/packages/
 /lfs/lfs/repo
 /lfs/lfs/sources
 /lfs/systemv/usr/src
-/lfs/lfs.hd256/sources
 /lfs/lfs.hd256/repo
-/lfs/lfs.hd256/srv
-/lfs/lfs.hd256/github
+
+/lfs/full-5.19.10/alfs
+/lfs/full-5.19.10/jhalfs
+/lfs/full-5.19.10/repo
+/lfs/full-5.19.10/sources

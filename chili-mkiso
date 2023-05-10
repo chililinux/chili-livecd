@@ -14,16 +14,17 @@ CREATESFS=1
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 set -e
 
-sh_configure()
-{
+sh_configure() {
 	##########################################################
 	DISTRONAME="CHILI"
-	LFSVERSION="live"
+	LFSVERSION='live'
 	LFS=/lfs
-	LFSBASENAME=chili-base-5.0.9
+	LFSBASENAME=base
+	##########################################################
+	_VERSION='5.9.0-rc3-chilios'
+	sh_choosekernel
 	##########################################################
 	COMPRESSION="gzip"
-	_VERSION='5.9.0-rc3-chilios'
 	ARCH="x86_64"
 	ORIGEM="$LFS/$LFSBASENAME"
 	LOCALDIR="$PWD"
@@ -40,8 +41,36 @@ sh_configure()
 	DESTINITRD="$TEMPDIR/boot/initrd"
 }
 
-maxcol()
-{
+sh_choosekernel() {
+	local array=()
+	local ARRAY=()
+	local sep="\xe2\x94\x82"
+	local nc=0
+	local n=0
+
+	mapfile -t ARRAY <<< "$(find $LFS/$LFSBASENAME/boot/ -iname vmlinuz*)"
+   for key in "${ARRAY[@]}"; do
+		filename=$(basename "$key")
+		array+=("$filename" "$(printf "$sep%-s" $(file "$key"))")
+   done
+	xkernel=$(dialog										\
+		--stdout												\
+		--clear												\
+		--colors												\
+		--menu	"Kernel's in $LFS/$LFSBASENAME"	\
+		0 0 25	"${array[@]}" 							)
+
+	exit_status=$?
+	case $exit_status in
+		1|255)
+			echo "Cancelled!"
+			exit 1
+			;;
+	esac
+	_VERSION="${xkernel#*-}"
+}
+
+maxcol() {
 	COLUMNS=$(stty size)
    COLUMNS=${COLUMNS##* }
 	(( COLUMNS <= 0  )) && COLUMNS=80
@@ -50,8 +79,7 @@ maxcol()
 
 # $1 - caractere
 # $2 - tamanho
-replicate()
-{
+replicate() {
    #  Repete um caractere um determinado número de vezes
    #+ Recebe:
    #+  Tamanho final da cadeia
@@ -61,8 +89,7 @@ replicate()
    echo "${Var// /$1}"       #  Troca os espaços pelo caractere escolhido
 }
 
-setvarcolors()
-{
+setvarcolors() {
    if tput setaf 1 &> /dev/null; then
       tput sgr0; # reset colors
       #bold=$(tput bold);
@@ -97,8 +124,7 @@ setvarcolors()
 }
 
 # $1: message string
-_msg_info()
-{
+_msg_info() {
 	local _msg="${1}"
 	[[ "${quiet}" == "y" ]] || printf "[%s] ${yellow}INFO${reset}: %s\n" "${red}${app_name}${reset}" "${_msg}"
 }
@@ -120,8 +146,7 @@ _msg_error() {
     fi
 }
 
-sh_ambiente()
-{
+sh_ambiente() {
 	local lnotexist=0
 	replicate '#' "$(maxcol)"
 	_msg_info "Criando ISO: ${cyan}$OUTPUT_ISO${reset}"
@@ -156,8 +181,7 @@ sh_ambiente()
 	replicate '#' "$(maxcol)"
 }
 
-info()
-{
+info() {
    whiptail                   \
    	--fb  						\
       --title     "[debug]$0" \
@@ -171,8 +195,7 @@ info()
    return $result
 }
 
-sh_mksquashfs()
-{
+sh_mksquashfs() {
  	if [[ -e "$TEMPDIR/filesystem/root.sfs" ]]; then
 		_msg_info "Removendo OLD file squashfs root.sfs..."
 		rm -f $TEMPDIR/filesystem/root.sfs
@@ -189,8 +212,7 @@ sh_mksquashfs()
    esac
 }
 
-sh_mkiso()
-{
+sh_mkiso() {
  	if ! [[ -d "out" ]]; then
  		mkdir -p out
  	fi
@@ -271,8 +293,7 @@ sh_mkiso()
 	_msg_info "Arquivo iso ${red}$PWD/out/$OUTPUT_ISO${reset} criado com sucesso!"
 }
 
-init()
-{
+init() {
    case "${1}" in
       --no)    CREATESFS=0;;
       --yes)	CREATESFS=1;;
@@ -280,8 +301,7 @@ init()
    esac
 }
 
-usage()
-{
+usage() {
    echo -e "${orange}uso${green}:${white}  ${app_name} ${green}<${white}operação${green}> [${white}...${green}]${reset}"
    echo -e "operações:"
    echo -e "${pink}  -h${cyan}, display this help and exit"
@@ -294,8 +314,7 @@ usage()
 	exit 1
 }
 
-check_deps()
-{
+check_deps() {
    local errorFound=0
    declare -a missing
 
@@ -311,8 +330,7 @@ check_deps()
    fi
 }
 
-sh_domkiso()
-{
+sh_domkiso() {
 	if (( CREATESFS )); then
 		sh_mksquashfs
 	else
@@ -326,8 +344,7 @@ sh_domkiso()
 	sh_mkiso
 }
 
-main()
-{
+main() {
 	setvarcolors
 	check_deps
 
