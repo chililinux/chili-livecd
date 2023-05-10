@@ -19,7 +19,7 @@ sh_configure() {
 	DISTRONAME="CHILI"
 	LFSVERSION='live'
 	LFS=/lfs
-	LFSBASENAME=base
+	LFSBASENAME=full-5.17.0
 	##########################################################
 	_VERSION='5.9.0-rc3-chilios'
 	sh_choosekernel

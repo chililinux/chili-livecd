@@ -2,8 +2,11 @@ Welcome to Chili GNU/Linux \r  (\n) \l
 https://www.chililinux.com
 https://www.chilios.com.br
 
-user     : root
-password : root
+user	password
+--------------
+live	    live
+root	    root
+
 install  : # chili-install
 
 
