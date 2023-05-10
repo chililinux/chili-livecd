@@ -1,13 +1,24 @@
 /lfs/chili-base-5.0.9/packages/
+
 /lfs/mazon_dev/blfs_root/
 /lfs/mazon_dev/jhalfs/
 /lfs/mazon_dev/packages/
-/lfs/lfs/repo
+
+#/lfs/lfs/repo
+#/lfs/lfs/srv/http
 /lfs/lfs/sources
-/lfs/systemv/usr/src
-/lfs/lfs.hd256/repo
+/lfs/lfs/lixo
+/lfs/lfs/chili
+
+/lfs/dell-systemd250/repo
+/lfs/dell-systemd250/srv/http
+/lfs/dell-systemd250/sources
+/lfs/dell-systemd250/repo
+/lfs/dell-systemd250/chili
+/lfs/dell-systemd250/lixo
 
 /lfs/full-5.19.10/alfs
 /lfs/full-5.19.10/jhalfs
 /lfs/full-5.19.10/repo
 /lfs/full-5.19.10/sources
+/lfs/full-5.19.10/lixo
