@@ -19,8 +19,7 @@ sh_configure() {
 	DISTRONAME="CHILI"
 	LFSVERSION='live'
 	LFS=/lfs
-#	LFSBASENAME=full-5.19.10
-	LFSBASENAME=dell-systemd250
+	LFSBASENAME=archlive
 	##########################################################
 	_VERSION='5.19.10-chili'
 	sh_choosekernel

@@ -14,6 +14,7 @@
 /lfs/dell-systemd250/srv/http
 /lfs/dell-systemd250/sources
 /lfs/dell-systemd250/repo
+/lfs/dell-systemd250/packages
 /lfs/dell-systemd250/chili
 /lfs/dell-systemd250/lixo
 
@@ -22,3 +23,12 @@
 /lfs/full-5.19.10/repo
 /lfs/full-5.19.10/sources
 /lfs/full-5.19.10/lixo
+
+/lfs/base-5.0.9/packages
+
+/lfs/dell_dev/blfs_root/
+/lfs/dell_dev/packages
+
+/lfs/base_dev/blfs_root/
+/lfs/base_dev/packages
+
