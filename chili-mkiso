@@ -16,12 +16,12 @@ set -e
 
 sh_configure() {
 	##########################################################
-	DISTRONAME="CHILI"
+	DISTRONAME='MAZON'
 	LFSVERSION='live'
-	LFS=/lfs
-	LFSBASENAME=archlive
+	LFS='/lfs'
+	LFSBASENAME='mazon'
 	##########################################################
-	_VERSION='5.19.10-chili'
+	_VERSION='6.1.28-lts-chili'
 	sh_choosekernel
 	##########################################################
 	COMPRESSION="gzip"
@@ -33,7 +33,7 @@ sh_configure() {
 	ANOMES=$(date +"%Y%m")
 	ANOMESDIA=$(date +"%Y.%m.%d")
 	VOL_ID="${DISTRONAME}_${ANOMES}"
-	OUTPUT_ISO="$DISTRONAME-$LFSVERSION-$LFSBASENAME-$ANOMESDIA-$ARCH.iso"
+	OUTPUT_ISO="$DISTRONAME-$LFSVERSION-$LFSBASENAME-$_VERSION-$ANOMESDIA-$ARCH.iso"
 	#isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
 	KERNEL="${ORIGEM}/boot/vmlinuz-$_VERSION"
 	INITRD="${ORIGEM}/boot/initrd-$_VERSION.img"
