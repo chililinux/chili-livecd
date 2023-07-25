@@ -48,10 +48,12 @@ sh_choosekernel() {
 	local nc=0
 	local n=0
 
-	mapfile -t ARRAY <<< "$(find $LFS/$LFSBASENAME/boot/ -iname vmlinuz*)"
+	mapfile -t ARRAY <<< "$(find $LFS/$LFSBASENAME/boot/ -iname 'vmlinuz*')"
    for key in "${ARRAY[@]}"; do
 		filename=$(basename "$key")
-		array+=("$filename" "$(printf "$sep%-s" $(file "$key"))")
+		array+=("$filename")
+		array+=("$(printf "$sep%-s")")
+		array+=("$(file "$key")")
    done
 	xkernel=$(dialog										\
 		--default-item vmlinuz-$_VERSION				\
@@ -214,14 +216,8 @@ sh_mksquashfs() {
 }
 
 sh_mkiso() {
- 	if ! [[ -d "out" ]]; then
- 		mkdir -p out
- 	fi
-
- 	if [[ -e "$OUTPUT_ISO" ]]; then
-		_msg_info "Excluindo .iso antigo..."
-		rm -f "$OUTPUT_ISO"
-	fi
+	[[ ! -d "out"       ]] && { mkdir -p out; }
+ 	[[ -e "$OUTPUT_ISO" ]] && { _msg_info "Excluindo .iso antigo..."; rm -f "$OUTPUT_ISO"; }
 	_msg_info "Criando iso $OUTPUT_ISO..."
 
 	#MBR
