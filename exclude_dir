@@ -19,11 +19,14 @@
 /lfs/dell-systemd250/repo
 /lfs/dell-systemd250/sources
 /lfs/dell-systemd250/srv/http
+
 /lfs/full-5.19.10/alfs
 /lfs/full-5.19.10/jhalfs
 /lfs/full-5.19.10/lixo
 /lfs/full-5.19.10/repo
+/lfs/full-5.19.10/packages
 /lfs/full-5.19.10/sources
+
 /lfs/lfs/chili
 /lfs/lfs/lixo
 #/lfs/lfs/repo
@@ -43,3 +46,19 @@
 /lfs/alfs_runit/packages/sources
 
 /lfs/mazon/packages
+
+/lfs/lfs_new_base/blfs_root
+/lfs/lfs_new_base/jhalfs
+/lfs/lfs_new_base/packages
+/lfs/lfs_new_base/sources
+/lfs/lfs_new_base/repo
+
+/lfs/lfs_new_rootfs/chapter5-2023-06-13-T-02h18.tar
+/lfs/lfs_new_rootfs/blfs_root
+/lfs/lfs_new_rootfs/jhalfs
+/lfs/lfs_new_rootfs/packages
+/lfs/lfs_new_rootfs/sources
+/lfs/lfs_new_rootfs/repo
+
+/lfs/systemv/packages
+/lfs/systemv/sources

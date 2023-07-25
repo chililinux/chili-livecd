@@ -19,7 +19,7 @@ sh_configure() {
 	DISTRONAME='CHILI'
 	LFSVERSION='live'
 	LFS='/lfs'
-	LFSBASENAME='base'
+	LFSBASENAME='dell'
 	##########################################################
 	_VERSION='6.1.28-lts-chili'
 	sh_choosekernel
