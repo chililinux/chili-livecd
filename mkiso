@@ -18,8 +18,8 @@ function sh_configure {
    ##########################################################
    declare -g distro_name='CHILI'
    declare -g lfs_version='live'
-   declare -g lfs_root='/lfs'
-   declare -g lfs_basename='dell'
+   declare -g lfs_root='/lixo/void'
+   declare -g lfs_basename='void-host'
    ##########################################################
    declare -g kernel_version='6.1.28-lts-chili'
    sh_choosekernel
@@ -28,7 +28,7 @@ function sh_configure {
    declare -g ARCH="x86_64"
    declare -g ORIGEM="$lfs_root/$lfs_basename"
    declare -g LOCALDIR="$PWD"
-   declare -g TEMPDIR="/livecd/live/$lfs_basename"
+   declare -g TEMPDIR="$LOCALDIR/live/$lfs_basename"
    declare -g ISOLINUXDIR="$LOCALDIR/isolinux"
    declare -g date_ym=$(date +"%Y%m")
    declare -g date_ymd=$(date +"%Y.%m.%d")
@@ -133,6 +133,7 @@ function sh_setvarcolors {
 # Parâmetros:
 # $1: A mensagem informativa que será exibida
 function sh_msg_info {
+	local _msg="${1}"
 	((quiet)) || printf "[%s] ${yellow}INFO${reset}: %s\n" "${red}${_APP_}${reset}" "${_msg}"
 	# Verifica se a variável "quiet" é verdadeira (ou seja, igual a 0).
 	# Se for verdadeira, a mensagem não será exibida, pois a condição (( quiet )) é avaliada como verdadeira, e o operador "||" impede a execução do comando seguinte.
