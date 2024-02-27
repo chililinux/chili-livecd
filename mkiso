@@ -18,8 +18,8 @@ function sh_configure {
    ##########################################################
    declare -g distro_name='CHILI'
    declare -g lfs_version='live'
-   declare -g lfs_root='/lixo/void'
-   declare -g lfs_basename='void-host'
+   declare -g lfs_root='/lfs'
+   declare -g lfs_basename='void-e7'
    ##########################################################
    declare -g kernel_version='6.1.28-lts-chili'
    sh_choosekernel
@@ -171,6 +171,7 @@ function sh_ambiente {
 	sh_msg_info "Criando diretorio temporario $TEMPDIR"
 	[[ -d "$TEMPDIR" ]] || lnotexist=1
 	[[ -d "$TEMPDIR" ]] || mkdir -p "$TEMPDIR"/{filesystem,isolinux,boot,boot/grub,efi/boot}
+	[[ ! -d "out" ]] && { mkdir -p out; }
 
 	sh_msg_info "Copiando alguns necessarios arquivos..."
 	#	for file in $isolinux_files; do
@@ -226,7 +227,6 @@ function sh_mksquashfs {
 }
 
 function sh_mkiso {
-	[[ ! -d "out" ]] && { mkdir -p out; }
 	[[ -e "$OUTPUT_ISO" ]] && {
 		sh_msg_info "Excluindo .iso antigo..."
 		rm -f "$OUTPUT_ISO"
