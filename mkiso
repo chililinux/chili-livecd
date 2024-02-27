@@ -18,8 +18,8 @@ function sh_configure {
    ##########################################################
    declare -g distro_name='CHILI'
    declare -g lfs_version='live'
-   declare -g lfs_root='/lfs'
-   declare -g lfs_basename='void-e7'
+   declare -g lfs_root='/lfs/voidlinux/enlightenment-custom/image'
+   declare -g lfs_basename='rootfs'
    ##########################################################
    declare -g kernel_version='6.1.28-lts-chili'
    sh_choosekernel
@@ -32,7 +32,8 @@ function sh_configure {
    declare -g ISOLINUXDIR="$LOCALDIR/isolinux"
    declare -g date_ym=$(date +"%Y%m")
    declare -g date_ymd=$(date +"%Y.%m.%d")
-   declare -g VOL_ID="${distro_name}_${date_ym}"
+#  declare -g VOL_ID="${distro_name}_${date_ym}"
+   declare -g VOL_ID="VOID_LIVE"
    declare -g OUTPUT_ISO="$distro_name-$lfs_version-$lfs_basename-$kernel_version-$date_ymd-$ARCH.iso"
    #isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
    declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
@@ -191,7 +192,10 @@ function sh_ambiente {
 	cp -f "$KERNEL" "$TEMPDIR/boot/vmlinuz"
 
 	sh_msg_info "Copiando initrd $INITRD to $DESTINITRD"
-	cp -f "$INITRD" "$TEMPDIR/boot/initrd"
+	if [[ ! -e "$INITRD" ]]; then
+        INITRD="${ORIGEM}/boot/initramfs-$kernel_version.img"
+    fi
+    cp -f "$INITRD" "$TEMPDIR/boot/initrd"
 	replicate '#' "$(sh_maxcol)"
 }
 
