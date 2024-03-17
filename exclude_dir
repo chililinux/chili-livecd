@@ -1,2 +1,5 @@
-/lfs/systemv/packages
-/lfs/systemv/sources
+/lfs/chili/blfs_root
+/lfs/chili/jhalfs
+/lfs/chili/github
+/lfs/chili/packages
+/lfs/chili/sources

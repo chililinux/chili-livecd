@@ -3,43 +3,96 @@
 #usermod -l new_user user
 
 #debug
-export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+#export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 #set -x
 
 #global system
-_VERSION_='1.60.20240227'
+_VERSION_='1.60.20230725'
 DEPENDENCIES=(printf tput xorriso mksquashfs stat whiptail)
 _APP_="${0##*/}"
 CREATESFS=1
+declare -g TICK="${white}[${COL_LIGHT_GREEN}✓${COL_NC}${white}]"
+declare -g CROSS="${white}[${COL_LIGHT_RED}✗${COL_NC}$white]"
+declare -g BOOTLOG="/tmp/$APP-$(sh_diahora).log"
+declare -g LOGGER='/dev/tty8'
+declare -gi quiet=0
+declare -g use_color=1
+declare -gi contador=0
+declare -gi njobs=1
+
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 set -e
 
 function sh_configure {
-   ##########################################################
-   declare -g distro_name='CHILI'
-   declare -g lfs_version='live'
-   declare -g lfs_root='/lfs/voidlinux/enlightenment-custom/image'
-   declare -g lfs_basename='rootfs'
-   ##########################################################
-   declare -g kernel_version='6.1.28-lts-chili'
-   sh_choosekernel
-   ##########################################################
-   declare -g COMPRESSION="gzip"
-   declare -g ARCH="x86_64"
-   declare -g ORIGEM="$lfs_root/$lfs_basename"
-   declare -g LOCALDIR="$PWD"
-   declare -g TEMPDIR="$LOCALDIR/live/$lfs_basename"
-   declare -g ISOLINUXDIR="$LOCALDIR/isolinux"
-   declare -g date_ym=$(date +"%Y%m")
-   declare -g date_ymd=$(date +"%Y.%m.%d")
-#  declare -g VOL_ID="${distro_name}_${date_ym}"
-   declare -g VOL_ID="VOID_LIVE"
-   declare -g OUTPUT_ISO="$distro_name-$lfs_version-$lfs_basename-$kernel_version-$date_ymd-$ARCH.iso"
-   #isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
-   declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
-   declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
-   declare -g DESTKERNEL="$TEMPDIR/boot/vmlinuz"
-   declare -g DESTINITRD="$TEMPDIR/boot/initrd"
+	##########################################################
+	declare -g distro_name='CHILI'
+	declare -g lfs_version='live'
+	declare -g lfs_root='/lfs'
+	declare -g lfs_basename='chili'
+	##########################################################
+	declare -g kernel_version='6.1.28-lts-chili'
+	if [[ ! -d "$lfs_root/$lfs_basename" ]]; then
+		die "$lfs_root/$lfs_basename não existe"
+	fi
+	sh_choosekernel
+	##########################################################
+	declare -g COMPRESSION="gzip"
+	declare -g ARCH="x86_64"
+	declare -g ORIGEM="$lfs_root/$lfs_basename"
+	declare -g LOCALDIR="$PWD"
+	declare -g TEMPDIR="/livecd/live/$lfs_basename"
+	declare -g ISOLINUXDIR="$LOCALDIR/isolinux"
+	declare -g date_ym=$(date +"%Y%m")
+	declare -g date_ymd=$(date +"%Y.%m.%d")
+	declare -g VOL_ID="${distro_name}_${date_ym}"
+	declare -g OUTPUT_ISO="$distro_name-$lfs_version-$lfs_basename-$kernel_version-$date_ymd-$ARCH.iso"
+	#isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
+	declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
+	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
+	declare -g DESTKERNEL="$TEMPDIR/boot/vmlinuz"
+	declare -g DESTINITRD="$TEMPDIR/boot/initrd"
+}
+
+function sh_diahora {
+	local DIAHORA=$(date +"%d%m%Y-%T")
+	local DIAHORA=${DIAHORA//:/}
+	printf "%s\n" "$DIAHORA"
+}
+
+die() {
+	printf "${red}$CROSS ${pink}%03d/%03d => ${red}$(gettext "FATAL:") %s\n\033[m" "$ncontador" "$njobs" "$@"
+	exit 1
+}
+
+function sh_setvarcolors {
+    sh_check_terminal
+    if ((use_color)); then
+        bold=$(tput bold)
+        red=$(tput bold)$(tput setaf 196)
+        reset=$(tput sgr0)
+        pink=$(tput setaf 5)
+        yellow=$(tput bold)$(tput setaf 3)
+        green=$(tput bold)$(tput setaf 2)
+        cyan=$(tput setaf 6)
+    else
+        unset bold red reset pink yellow green cyan
+    fi
+}
+
+function sh_make_dir_layout {
+	local LFS=$lfs_root/$lfs_basename
+
+	set +e
+	mkdir -pv $LFS/{etc,var} $LFS/usr/{bin,lib,sbin}
+
+	for i in bin lib sbin; do
+	  ln -sv usr/$i $LFS/$i
+	done
+
+	case $(uname -m) in
+	  x86_64) mkdir -pv $LFS/lib64 ;;
+	esac
+	set -e
 }
 
 function sh_choosekernel {
@@ -79,20 +132,9 @@ function sh_maxcol {
 	echo $COLUMNS                  # Exibe o número de colunas (tamanho máximo) no terminal.
 }
 
-# Função que retorna uma string replicada com um caractere específico
-# Parâmetros:
-# $1: O caractere que será replicado
-# $2: O número de vezes que o caractere será repetido
 function replicate {
-	local Var # Declaração de uma variável local chamada "Var"
-
-	# Utiliza o comando "printf" para preencher a variável "Var" com espaços em branco.
-	# O formato %"$2"s instrui o "printf" a preencher a variável "Var" com o segundo argumento passado para a função.
-	# "$2" representa o número de vezes que o caractere será repetido.
+	local Var
 	printf -v Var %"$2"s " "
-
-	# Exibe o conteúdo da variável "Var", substituindo todos os espaços em branco pelo primeiro argumento passado para a função (representado por "$1").
-	# A substituição é realizada utilizando a expansão de parâmetro "${Var// /$1}", que substitui todas as ocorrências de espaço em branco por "$1" na variável "Var".
 	echo "${Var// /$1}"
 }
 
@@ -130,29 +172,17 @@ function sh_setvarcolors {
 	fi
 }
 
-# Função que exibe uma mensagem informativa formatada com cores específicas (caso "quiet" seja falso)
-# Parâmetros:
-# $1: A mensagem informativa que será exibida
 function sh_msg_info {
 	local _msg="${1}"
 	((quiet)) || printf "[%s] ${yellow}INFO${reset}: %s\n" "${red}${_APP_}${reset}" "${_msg}"
-	# Verifica se a variável "quiet" é verdadeira (ou seja, igual a 0).
-	# Se for verdadeira, a mensagem não será exibida, pois a condição (( quiet )) é avaliada como verdadeira, e o operador "||" impede a execução do comando seguinte.
-	# Caso contrário, a mensagem informativa formatada será exibida:
-	# - O nome do aplicativo (variável "_APP_") será exibido em vermelho brilhante.
-	# - A palavra "INFO" será exibida em amarelo brilhante.
-	# - A mensagem fornecida como primeiro parâmetro da função será exibida.
 }
 
-# $1: message string
 function sh_msg_warning {
 	local _msg="${1}"
 	printf '[%s] WARNING: %s\n' "${_APP_}" "${_msg}" >&2
 }
 
-# $1: message string
-# $2: exit code number (with 0 does not exit)
-function _msg_error {
+function sh_msg_error {
 	local _msg="${1}"
 	local _error="${2}"
 	printf '[%s] ERROR: %s\n' "${_APP_}" "${_msg}" >&2
@@ -172,7 +202,6 @@ function sh_ambiente {
 	sh_msg_info "Criando diretorio temporario $TEMPDIR"
 	[[ -d "$TEMPDIR" ]] || lnotexist=1
 	[[ -d "$TEMPDIR" ]] || mkdir -p "$TEMPDIR"/{filesystem,isolinux,boot,boot/grub,efi/boot}
-	[[ ! -d "out" ]] && { mkdir -p out; }
 
 	sh_msg_info "Copiando alguns necessarios arquivos..."
 	#	for file in $isolinux_files; do
@@ -192,10 +221,7 @@ function sh_ambiente {
 	cp -f "$KERNEL" "$TEMPDIR/boot/vmlinuz"
 
 	sh_msg_info "Copiando initrd $INITRD to $DESTINITRD"
-	if [[ ! -e "$INITRD" ]]; then
-        INITRD="${ORIGEM}/boot/initramfs-$kernel_version.img"
-    fi
-    cp -f "$INITRD" "$TEMPDIR/boot/initrd"
+	cp -f "$INITRD" "$TEMPDIR/boot/initrd"
 	replicate '#' "$(sh_maxcol)"
 }
 
@@ -230,7 +256,22 @@ function sh_mksquashfs {
 	esac
 }
 
+function sh_domkiso {
+	if ((CREATESFS)); then
+		sh_mksquashfs
+	else
+		if ! [[ -e "$TEMPDIR/filesystem/root.sfs" ]]; then
+			sh_msg_info "filesystem squashfs nao localizado, reconstruindo..."
+			sh_msg_info
+		else
+			sh_msg_info "Pulando filesystem squashfs..."
+		fi
+	fi
+	sh_mkiso
+}
+
 function sh_mkiso {
+	[[ ! -d "out" ]] && { mkdir -p out; }
 	[[ -e "$OUTPUT_ISO" ]] && {
 		sh_msg_info "Excluindo .iso antigo..."
 		rm -f "$OUTPUT_ISO"
@@ -284,38 +325,50 @@ function sh_mkiso {
 	#   -isohybrid-gpt-basdat \
 	#   $TEMPDIR
 
-	xorriso -as mkisofs \
-		-o "out/$OUTPUT_ISO" \
-		-isohybrid-mbr "$ISOLINUXDIR/isohdpfx.bin" \
-		-c isolinux/boot.cat \
-		-c isolinux/boot.cat \
-		-b isolinux/isolinux.bin \
-		-no-emul-boot -boot-load-size 4 -boot-info-table \
-		-eltorito-alt-boot \
-		-e isolinux/efi.img \
-		-no-emul-boot \
-		-isohybrid-gpt-basdat \
-		-iso-level 3 \
-		-full-iso9660-filenames \
-		-joliet \
-		-joliet-long \
-		-rational-rock \
-		-volid "${VOL_ID}" \
-		$TEMPDIR
+#	xorriso -as mkisofs \
+#		-o "out/$OUTPUT_ISO" \
+#		-isohybrid-mbr "$ISOLINUXDIR/isohdpfx.bin" \
+#       -eltorito-catalog isolinux/boot.cat \
+#       -eltorito-boot isolinux/isolinux.bin \
+#		-no-emul-boot \
+#		-boot-load-size 4 \
+#		-boot-info-table \
+#		-eltorito-alt-boot -e isolinux/efi.img \
+#		-no-emul-boot \
+#		-isohybrid-gpt-basdat \
+#		-iso-level 3 \
+#		-full-iso9660-filenames \
+#		-joliet \
+#		-joliet-long \
+#		-rational-rock \
+#		-volid "${VOL_ID}" \
+#		$TEMPDIR
+
+		xorriso \
+            -as mkisofs \
+            -iso-level 3 \
+            -rock \
+            -joliet \
+            -max-iso9660-filenames \
+            -omit-period \
+            -omit-version-number \
+            -relaxed-filenames \
+            -allow-lowercase \
+            -eltorito-catalog isolinux/boot.cat \
+            -eltorito-boot isolinux/isolinux.bin \
+            -no-emul-boot \
+            -boot-load-size 4 \
+            -boot-info-table \
+            -eltorito-alt-boot -e isolinux/efi.img \
+            -isohybrid-gpt-basdat \
+            -no-emul-boot \
+            -isohybrid-mbr "$ISOLINUXDIR"/isohdpfx.bin \
+			-o "out/$OUTPUT_ISO" \
+            -volid "$VOL_ID" \
+            "$TEMPDIR"
 
 	#rm -fr $TEMPDIR
 	sh_msg_info "Arquivo iso ${red}$PWD/out/$OUTPUT_ISO${reset} criado com sucesso!"
-}
-
-init() {
-	case "${1}" in
-	--no) CREATESFS=0 ;;
-	--yes) CREATESFS=1 ;;
-	*)
-		shift
-		sh_usage
-		;;
-	esac
 }
 
 function sh_usage {
@@ -347,20 +400,6 @@ function sh_check_deps {
 	fi
 }
 
-function sh_domkiso {
-	if ((CREATESFS)); then
-		sh_mksquashfs
-	else
-		if ! [[ -e "$TEMPDIR/filesystem/root.sfs" ]]; then
-			sh_msg_info "filesystem squashfs nao localizado, reconstruindo..."
-			sh_msg_info
-		else
-			sh_msg_info "Pulando filesystem squashfs..."
-		fi
-	fi
-	sh_mkiso
-}
-
 function sh_init {
 	sh_setvarcolors
 	sh_check_deps
@@ -384,11 +423,12 @@ function sh_init {
 	shift $((OPTIND - 1))
 
 	if ((EUID != 0)); then
-		_msg_error "${_APP_} must be run as root." 1
+		sh_msg_error "${_APP_} must be run as root." 1
 	fi
 
+	sh_setvarcolors
 	sh_configure
-	#init $*
+	sh_make_dir_layout
 	sh_ambiente
 	sh_domkiso
 }

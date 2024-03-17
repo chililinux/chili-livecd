@@ -3,3 +3,4 @@ initrd
 *.iso
 *.sfs
 live/*
+out/
