@@ -38,6 +38,7 @@ set -e
 function sh_configure {
 	##########################################################
 	declare -g distro_name='CHILI'
+	declare -g lfs_de='xfce'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
 	declare -g lfs_basename='chili-new'
@@ -58,16 +59,51 @@ function sh_configure {
 	declare -g date_ym=$(date +"%Y%m")
 	declare -g date_ymd=$(date +"%Y.%m.%d")
 	declare -g VOL_ID="${distro_name}_${date_ym}"
-	declare -g OUTPUT_ISO="$distro_name-$lfs_version-$lfs_basename-$kernel_version-$date_ymd-$ARCH.iso"
+	declare -g OUTPUT_ISO="$distro_name-$lfs_version-$lfs_de-$kernel_version-$ARCH-$date_ymd.iso"
 	#isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
 	declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
 	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version-iso.img"
 #	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
-	declare -g DESTKERNEL="$TEMPDIR/boot/vmlinuz"
-	declare -g DESTINITRD="$TEMPDIR/boot/initrd"
-	declare -g sfs="$TEMPDIR/$lfs_basename/x86_64//${squashfs_name}"
-	declare -g RELATIVE_ROOTGRUB="$lfs_basename/boot/grub"
+	declare -g DESTKERNEL="$TEMPDIR/live/boot/vmlinuz"
+	declare -g DESTINITRD="$TEMPDIR/live/boot/initrd"
+	declare -g sfs="$TEMPDIR/live/x86_64//${squashfs_name}"
+	declare -g RELATIVE_ROOTGRUB="live/boot/grub"
 
+}
+
+function sh_ambiente {
+	local lnotexist=0
+	replicate '#' "$(sh_maxcol)"
+	sh_msg_info "Criando ISO: ${cyan}$OUTPUT_ISO${reset}"
+	sh_msg_info "ISO LABEL  : ${cyan}$VOL_ID${reset}"
+	sh_msg_info "ISO ORIGEM : ${cyan}$ORIGEM${reset}"
+	sh_msg_info "DESTINO    : ${cyan}$sfs${reset}"
+
+	sh_msg_info "Criando diretorio temporario $TEMPDIR"
+	[[ -d "$TEMPDIR" ]] || lnotexist=1
+	[[ -d "$TEMPDIR" ]] || mkdir -p "$TEMPDIR"/{live,EFI,loader,syslinux,isolinux,live/boot/grub,live/x86_64}
+
+	sh_msg_info "Copiando alguns necessarios arquivos..."
+	#	for file in $isolinux_files; do
+	#		cp $ISOLINUXDIR/$file $TEMPDIR/isolinux
+	#	done
+	#	cp $ISOLINUXDIR/efiboot.img $TEMPDIR/isolinux
+	#	cp $LOCALDIR/model/efi/boot/bootx64.efi $TEMPDIR/efi/boot
+
+#	if ((lnotexist)); then
+#		cp -Rpva "$LOCALDIR"/model-arch/. "$TEMPDIR"/.
+		rsync -Crazp "$LOCALDIR"/model-arch/ "$TEMPDIR"/
+#	fi
+
+	echo "$distro_name" >"$TEMPDIR/isolinux/venomlive"
+	[ -d $PWD/virootfs ] && cp -aR $PWD/virootfs "$TEMPDIR"
+
+	sh_msg_info "Copiando kernel $KERNEL to $DESTKERNEL"
+	cp -f "$KERNEL" "$DESTKERNEL"
+
+	sh_msg_info "Copiando initrd $INITRD to $DESTINITRD"
+	cp -f "$INITRD" "$DESTINITRD"
+	replicate '#' "$(sh_maxcol)"
 }
 
 function sh_choosekernel {
@@ -210,41 +246,6 @@ function sh_msg_error {
 	fi
 }
 
-function sh_ambiente {
-	local lnotexist=0
-	replicate '#' "$(sh_maxcol)"
-	sh_msg_info "Criando ISO: ${cyan}$OUTPUT_ISO${reset}"
-	sh_msg_info "ISO LABEL  : ${cyan}$VOL_ID${reset}"
-	sh_msg_info "ISO ORIGEM : ${cyan}$ORIGEM${reset}"
-	sh_msg_info "DESTINO    : ${cyan}$sfs${reset}"
-
-	sh_msg_info "Criando diretorio temporario $TEMPDIR"
-	[[ -d "$TEMPDIR" ]] || lnotexist=1
-	[[ -d "$TEMPDIR" ]] || mkdir -p "$TEMPDIR"/{$lfs_basename,EFI,loader,syslinux,isolinux,$lfs_basename/boot/grub,$lfs_basename/x86_64}
-
-	sh_msg_info "Copiando alguns necessarios arquivos..."
-	#	for file in $isolinux_files; do
-	#		cp $ISOLINUXDIR/$file $TEMPDIR/isolinux
-	#	done
-	#	cp $ISOLINUXDIR/efiboot.img $TEMPDIR/isolinux
-	#	cp $LOCALDIR/model/efi/boot/bootx64.efi $TEMPDIR/efi/boot
-
-#	if ((lnotexist)); then
-#		cp -Rpva "$LOCALDIR"/model-arch/. "$TEMPDIR"/.
-		rsync -Crazp "$LOCALDIR"/model-arch/ "$TEMPDIR"/
-#	fi
-
-	echo "$distro_name" >"$TEMPDIR/isolinux/venomlive"
-	[ -d $PWD/virootfs ] && cp -aR $PWD/virootfs "$TEMPDIR"
-
-	sh_msg_info "Copiando kernel $KERNEL to $DESTKERNEL"
-	cp -f "$KERNEL" "$TEMPDIR/$lfs_basename/boot/vmlinuz"
-
-	sh_msg_info "Copiando initrd $INITRD to $DESTINITRD"
-	cp -f "$INITRD" "$TEMPDIR/$lfs_basename/boot/initrd"
-	replicate '#' "$(sh_maxcol)"
-}
-
 function sh_info {
 	whiptail \
 		--fb \
@@ -260,7 +261,6 @@ function sh_info {
 }
 
 function sh_mksquashfs {
-	local sfs="$TEMPDIR/$lfs_basename/x86_64//${squashfs_name}"
 	if [[ -e "$sfs" ]]; then
 		sh_msg_info "Removendo OLD file squashfs ${sfs}..."
 		rm -f $sfs
