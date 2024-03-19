@@ -1,0 +1,345 @@
+#!/usr/bin/env bash
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166
+
+set -e
+export TEXTDOMAINDIR=/usr/share/locale
+export TEXTDOMAIN=livecd
+readonly APP="${0##*/}"
+readonly _VERSION_="1.0.0-20240318"
+readonly DEPENDENCIES=(pigz tar tput sed)
+
+function sh_diahora {
+	local DIAHORA=$(date +"%d%m%Y-%T")
+	local DIAHORA=${DIAHORA//:/}
+	printf "%s\n" "$DIAHORA"
+}
+
+function sh_configure {
+    ##########################################################
+    declare -g distro_name='CHILI'
+    declare -g lfs_version='live'
+    declare -g lfs_root='/lfs'
+    declare -g lfs_basename='chili'
+    declare -g squashfs_name='airootfs.sfs'
+    ##########################################################
+    declare -g kernel_version='6.1.28-lts-chili'
+    if [[ ! -d "$lfs_root/$lfs_basename" ]]; then
+        die "$lfs_root/$lfs_basename não existe"
+    fi
+    sh_choosekernel
+    ##########################################################
+    declare -g COMPRESSION="gzip"
+    declare -g ARCH="x86_64"
+    declare -g ORIGEM="$lfs_root/$lfs_basename"
+    declare -g LOCALDIR="$PWD"
+    declare -g TEMPDIR="/livecd/live/$lfs_basename"
+    declare -g ISOLINUXDIR="$LOCALDIR/isolinux"
+    declare -g date_ym=$(date +"%Y%m")
+    declare -g date_ymd=$(date +"%Y.%m.%d")
+    declare -g VOL_ID="${distro_name}_${date_ym}"
+    declare -g OUTPUT_ISO="out/$distro_name-$lfs_version-$lfs_basename-$kernel_version-$date_ymd-$ARCH.iso"
+    #isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32>
+    declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
+#   declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version-iso.img"
+    declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
+    declare -g DESTKERNEL="$TEMPDIR/boot/vmlinuz"
+    declare -g DESTINITRD="$TEMPDIR/boot/initrd"
+
+	declare -g TICK="${white}[${COL_LIGHT_GREEN}✓${COL_NC}${white}]"
+	declare -g CROSS="${white}[${COL_LIGHT_RED}✗${COL_NC}$white]"
+	declare -g BOOTLOG="/tmp/$APP-$(sh_diahora).log"
+	declare -g LOGGER='/dev/tty8'
+	declare -gi quiet=0
+	declare -g use_color=1
+	declare -gi contador=0
+	declare -gi njobs=0
+	sh_setvarcolors
+}
+
+function sh_choosekernel {
+    local array=()
+    local ARRAY=()
+    local sep="\xe2\x94\x82"
+    local nc=0
+    local n=0
+
+    mapfile -t ARRAY <<<"$(find $lfs_root/$lfs_basename/boot/ -iname 'vmlinuz*')"
+    for key in "${ARRAY[@]}"; do
+        filename=${key##*/}
+        array+=("$filename" "$(printf "$sep%-s" "$(file "$key")")")
+    done
+    xkernel=$(dialog \
+        --default-item vmlinuz-$kernel_version \
+        --stdout \
+        --clear \
+        --colors \
+        --menu "Kernel's in $lfs_root/$lfs_basename" \
+        0 0 25 "${array[@]}")
+
+    exit_status=$?
+    case $exit_status in
+    1|255)
+        die "Cancelled!"
+        ;;
+    esac
+    kernel_version="${xkernel#*-}"
+}
+
+function debug {
+    whiptail \
+        --fb \
+        --title "[debug]$0" \
+        --backtitle "[debug]$0" \
+        --yesno "${*}\n" \
+        0 0
+    result=$?
+    if ((result)); then
+        exit
+    fi
+    return $result
+}
+
+function log_error {
+	printf "%30s:%-06d] : %s => %s\n" "$1" "$2" "$3 $4" >>"$BOOTLOG"
+}
+
+function info_msg() {
+	((++ncontador))
+	((++njobs))
+	printf "${green}$TICK ${pink}%03d/%03d => ${yellow}%s\n\033[m" "$ncontador" "$njobs" "$@"
+}
+
+function sh_setvarcolors {
+	sh_check_terminal
+	if ((use_color)); then
+		bold=$(tput bold)
+		red=$(tput bold)$(tput setaf 196)
+		reset=$(tput sgr0)
+		pink=$(tput setaf 5)
+		yellow=$(tput bold)$(tput setaf 3)
+		green=$(tput bold)$(tput setaf 2)
+		cyan=$(tput setaf 6)
+	else
+		unset bold red reset pink yellow green cyan
+	fi
+}
+
+function sh_check_terminal {
+	if [ ! -t 1 ]; then
+		use_color=0
+	fi
+}
+
+die() {
+	printf "${red}$CROSS ${pink}%03d/%03d => ${red}$(gettext "FATAL:") %s\n\033[m" "$ncontador" "$njobs" "$@"
+	exit 1
+}
+
+sh_configure
+info_msg "Running '$*'"
+
+BASE="$lfs_version"
+DISTRO="$lfs_basename"
+BASENAME="$HOME/$BASE/$DISTRO"
+ORIGEM="/lfs/chili"
+ROOTFS="$BASENAME/work/rootfs"
+LIVEDIR="$BASENAME/livecd"
+ISOLINUXDIR="$LIVEDIR/isolinux"
+ROOTEFI="$LIVEDIR/EFI"
+ROOTLIVE="$LIVEDIR/$DISTRO/x86_64"
+ROOTBOOT="$LIVEDIR/$DISTRO/boot"
+ROOTGRUB="$LIVEDIR/$DISTRO/boot/grub"
+RELATIVE_ROOTGRUB="$DISTRO/boot/grub"
+KERNEL_VERSION="5.18.12-chili"
+
+mkdir -p $ROOTLIVE
+mkdir -p $ISOLINUXDIR
+mkdir -p $ROOTGRUB
+mkdir -p $ROOTFS
+
+#rsync 	-av \
+#		--one-file-system \
+#		--exclude=/proc/* \
+#		--exclude=/dev/* \
+#		--exclude=/sys/* \
+#		--exclude=/tmp/* \
+#		--exclude=/media/* \
+#		--exclude=/mnt/* \
+#		--exclude=/lost+found \
+#		--exclude=^/iso \
+#		$ORIGEM/ \
+#		$ROOTFS/
+
+#grub-mkimage -o core.img biosdisk iso9660 -O i386-pc-eltorito -p live
+info_msg "grub-mkimage --output=core.img biosdisk iso9660 --format=i386-pc --prefix="/$RELATIVE_ROOTGRUB""
+grub-mkimage --output=core.img biosdisk iso9660 --format=i386-pc --prefix="/$RELATIVE_ROOTGRUB"
+
+info_msg "cat /usr/lib/grub/i386-pc/cdboot.img core.img >eltorito.img"
+cat /usr/lib/grub/i386-pc/cdboot.img core.img >eltorito.img
+
+info_msg "cp -p $ROOTFS/boot/vmlinuz-$KERNEL_VERSION $ROOTBOOT/vmlinuz"
+cp -p $ROOTFS/boot/vmlinuz-$KERNEL_VERSION $ROOTBOOT/vmlinuz
+
+info_msg "cp -p $ROOTFS/boot/initrd-$KERNEL_VERSION.img $ROOTBOOT/initrd"
+cp -p $ROOTFS/boot/initrd-$KERNEL_VERSION.img $ROOTBOOT/initrd
+
+info_msg "find /usr/lib/grub/ -iname 'cdboot.img' -exec cp -v {} $ROOTGRUB \;"
+find /usr/lib/grub/ -iname 'cdboot.img' -exec cp {} $ROOTGRUB \;
+
+info_msg "cp eltorito.img $ROOTGRUB"
+cp eltorito.img $ROOTGRUB
+info_msg "cp core.img $ROOTGRUB"
+cp core.img $ROOTGRUB
+
+info_msg "cd /usr/lib/grub/i386-pc"
+if pushd /usr/lib/grub/i386-pc >/dev/null 2>&- ; then
+	for a in *.mod efiemu??.o command.lst moddep.lst fs.lst handler.lst parttool.lst; do
+		if test -e $a; then
+			[[ -e $ROOTGRUB/$a ]] || {
+				info_msg "cp $a $ROOTGRUB/"
+				cp $a $ROOTGRUB/
+			}
+		fi
+	done
+	popd >/dev/null 2>&-
+fi
+
+info_msg "cat >$ROOTGRUB/menu.lst"
+cat >$ROOTGRUB/menu.lst <<-EOF
+	# By default,boot the first entry.
+	default 0
+
+	# Boot automatically after 30 secs.
+	timeout 30
+
+	color cyan/blue white/blue
+
+	title Start Linux in Graphical Mode
+	kernel /chili/boot/vmlinuz BOOT=live boot=live nopersistent rw quiet splash
+	initrd /chili/boot/initrd
+
+	title Start Linux in Safe Graphical Mode
+	kernel /chili/boot/vmlinuz BOOT=live boot=live xforcevesa rw quiet splash
+	initrd /chili/boot/initrd
+
+	title Start Linux in Text Mode
+	kernel /chili/boot/vmlinuz BOOT=live boot=live nopersistent textonly rw quiet
+	initrd /chili/boot/initrd
+
+	title Start Persistent Live CD
+	kernel /chili/boot/vmlinuz BOOT=live boot=live persistent rw quiet splash
+	initrd /chili/boot/initrd
+
+	title Start Linux Graphical Mode from RAM
+	kernel /chili/boot/vmlinuz BOOT=live boot=live toram nopersistent rw quiet splash
+	initrd /chili/boot/initrd
+
+	title Memory Test
+	kernel /chili/boot/memtest86+.bin
+
+	title Boot the First Hard Disk
+	root (hd0)
+	chainloader +1
+EOF
+
+info_msg "cat >$ROOTGRUB/grub.cfg"
+cat >$ROOTGRUB/grub.cfg <<-EOF
+	#search --set=root --file /DEBIAN_CUSTOM
+
+	set default="0"
+	set timeout=30
+
+	# If X has issues finding screens, experiment with/without nomodeset.
+
+	menuentry "Chili GNU/Linux Live [EFI/GRUB]" {
+	  linux    (cd)/chili/boot/vmlinuz boot=live noeject noprompt archisobasedir=chili archisolabel=CHILI_202403
+	  initrd   (cd)/chili/boot/initrd
+	}
+
+	menuentry "Chili GNU/Linux Live [EFI/GRUB] (nomodeset)" {
+	  linux    (cd)/chili/boot/vmlinuz boot=live nomodeset noeject noprompt archisobasedir=chili archisolabel=CHILI_202403
+	  initrd   (cd)/chili/boot/initrd
+	# linux    ($root)/live/vmlinuz boot=live nomodeset
+	# initrd   ($root)/live/initrd
+	}
+EOF
+
+info_msg "mksquashfs $ROOTFS $ROOTLIVE/${squashfs_name} -comp xz"
+#mksquashfs $ROOTFS $ROOTLIVE/${squashfs_name} -comp xz
+
+[[ ! -e $OUTPUT_ISO ]] || info_msg "rm $OUTPUT_ISO"
+[[ ! -e $OUTPUT_ISO ]] || rm $OUTPUT_ISO
+
+#mkisofs \
+#		-eltorito-boot chili/boot/grub/eltorito.img \
+#		-no-emul-boot \
+#		-boot-load-size 4 \
+#		-boot-info-table \
+#		-cache-inodes -r -J -l \
+#		-volid "${VOL_ID}" \
+#		-o $OUTPUT_ISO \
+#		$LIVEDIR
+
+info_msg "xorriso \
+	-as mkisofs \
+	-iso-level 3 \
+	-rock \
+	-joliet \
+	-full-iso9660-filenames \
+	-omit-period \
+	-omit-version-number \
+	-relaxed-filenames \
+	-allow-lowercase \
+	-eltorito-boot "$RELATIVE_ROOTGRUB/eltorito.img" \
+	-no-emul-boot \
+	-boot-load-size 4 \
+	-boot-info-table \
+	-cache-inodes \
+	-rational-rock \
+	-output $OUTPUT_ISO \
+	-volid "${VOL_ID}" \
+	$LIVEDIR"
+
+xorriso \
+	-as mkisofs \
+	-iso-level 3 \
+	-rock \
+	-joliet \
+	-full-iso9660-filenames \
+	-omit-period \
+	-omit-version-number \
+	-relaxed-filenames \
+	-allow-lowercase \
+	-eltorito-boot "$RELATIVE_ROOTGRUB/eltorito.img" \
+	-no-emul-boot \
+	-boot-load-size 4 \
+	-boot-info-table \
+	-cache-inodes \
+	-rational-rock \
+	-output $OUTPUT_ISO \
+	-volid "${VOL_ID}" \
+	$LIVEDIR >/dev/null 2>&-
+
+#xorriso \
+#	-as mkisofs \
+#	-iso-level 3 \
+#	-rock \
+#	-joliet \
+#	-max-iso9660-filenames \
+#	-omit-period \
+#	-omit-version-number \
+#	-relaxed-filenames \
+#	-allow-lowercase \
+#	-eltorito-catalog isolinux/boot.cat \
+#	-eltorito-boot isolinux/isolinux.bin \
+#	-no-emul-boot \
+#	-boot-load-size 4 \
+#	-boot-info-table \
+#	-eltorito-alt-boot -e isolinux/efi.img \
+#	-isohybrid-gpt-basdat \
+#	-isohybrid-mbr "$ISOLINUXDIR"/isohdpfx.bin \
+#	-o $OUTPUT_ISO \
+#	-volid "$VOL_ID" \
+#	"$LIVEDIR"
+
+info_msg "Arquivo ISO: ${red}$OUTPUT_ISO${reset} criado com sucesso!"
