@@ -43,12 +43,14 @@ function sh_configure {
 	declare -g lfs_root='/lfs'
 	declare -g lfs_basename='chili-new'
 	declare -g squashfs_name='airootfs.sfs'
+	declare -g bootloader='syslinux'
 	##########################################################
 	declare -g kernel_version='6.1.28-lts-chili'
 	if [[ ! -d "$lfs_root/$lfs_basename" ]]; then
 		die "$lfs_root/$lfs_basename não existe"
 	fi
 	sh_choosekernel
+	sh_choosebootloader
 	##########################################################
 	declare -g COMPRESSION="gzip"
 	declare -g ARCH="x86_64"
@@ -67,8 +69,125 @@ function sh_configure {
 	declare -g DESTKERNEL="$TEMPDIR/live/boot/vmlinuz"
 	declare -g DESTINITRD="$TEMPDIR/live/boot/initrd"
 	declare -g sfs="$TEMPDIR/live/x86_64//${squashfs_name}"
+	declare -g ROOTGRUB="$TEMPDIR/live/boot/grub"
 	declare -g RELATIVE_ROOTGRUB="live/boot/grub"
+}
 
+function sh_configure_boot_loader {
+	case "$bootloader" in
+		grub) sh_create_conf_grub;;
+		syslinux) sh_create_conf_syslinux;;
+	esac
+}
+
+function sh_create_conf_grub {
+	cat >$TEMPDIR/live/boot/grub/grub.cfg <<-EOF
+#search --set=root --file /DEBIAN_CUSTOM
+
+set default="0"
+set timeout=30
+
+# If X has issues finding screens, experiment with/without nomodeset.
+
+menuentry "Chili GNU/Linux Live $kernel_version [EFI/GRUB]" {
+	linux	(cd)/live/boot/vmlinuz boot=live noeject noprompt archisobasedir=live archisolabel=$VOL_ID
+	initrd	(cd)/live/boot/initrd
+}
+
+menuentry "Chili GNU/Linux Live $kernel_version [EFI/GRUB] (nomodeset)" {
+	linux	(cd)/live/boot/vmlinuz boot=live nomodeset noeject noprompt archisobasedir=live archisolabel=$VOL_ID
+	initrd	(cd)/live/boot/initrd
+#	linux	($root)/live/vmlinuz boot=live nomodeset
+#	initrd	($root)/live/initrd
+}
+EOF
+
+	sh_msg_info "grub-mkimage --output=core.img biosdisk iso9660 --format=i386-pc --prefix="/$RELATIVE_ROOTGRUB""
+	grub-mkimage --output=core.img biosdisk iso9660 --format=i386-pc --prefix="/$RELATIVE_ROOTGRUB"
+
+	sh_msg_info "cat /usr/lib/grub/i386-pc/cdboot.img core.img >eltorito.img"
+	cat /usr/lib/grub/i386-pc/cdboot.img core.img >eltorito.img
+
+	sh_msg_info "find /usr/lib/grub/ -iname 'cdboot.img' -exec cp -v {} $ROOTGRUB \;"
+	find /usr/lib/grub/ -iname 'cdboot.img' -exec cp {} $ROOTGRUB \;
+
+	sh_msg_info "cp eltorito.img $ROOTGRUB"
+	cp eltorito.img $ROOTGRUB
+
+	sh_msg_info "cp core.img $ROOTGRUB"
+	cp core.img $ROOTGRUB
+
+	sh_msg_info "cd /usr/lib/grub/i386-pc"
+	if pushd /usr/lib/grub/i386-pc >/dev/null 2>&- ; then
+	    for a in *.mod efiemu??.o command.lst moddep.lst fs.lst handler.lst parttool.lst; do
+	        if test -e $a; then
+	            [[ -e $ROOTGRUB/$a ]] || {
+	                sh_msg_info "cp $a $ROOTGRUB/"
+	                cp $a $ROOTGRUB/
+	            }
+	        fi
+	    done
+	    popd >/dev/null 2>&-
+	fi
+}
+
+function sh_create_conf_syslinux {
+	sh_msg_info "Criando CFG: ${cyan}$TEMPDIR/isolinux/isolinux.cfg${reset}"
+	cat >$TEMPDIR/isolinux/isolinux.cfg <<-EOF
+UI /isolinux/vesamenu.c32
+DEFAULT silent
+TIMEOUT 100
+MENU RESOLUTION 1024 768
+MENU BACKGROUND /isolinux/background.png
+MENU VSHIFT 8
+MENU ROWS 8
+
+# Refer to http://syslinux.zytor.com/wiki/index.php/Doc/menu
+MENU TITLE Chili GNU/Linux LiveCD
+
+LABEL Chili
+	MENU LABEL ^Chili Gnu/Linux Live $kernel_version (x86_64, BIOS)
+	KERNEL /live/boot/vmlinuz
+	APPEND initrd=/live/boot/initrd archisobasedir=live archisolabel=$VOL_ID vga=791 quiet splash loglevel=3 audit=0 nvme_load=yes
+
+LABEL Chili-single
+	MENU LABEL ^Chili Gnu/Linux Live $kernel_version (x86_64, [single])
+	LINUX	/live/boot/vmlinuz
+	INITRD 	/live/boot/initrd
+	APPEND 	archisobasedir=live archisolabel=$VOL_ID vga=791 single
+
+LABEL existing
+	MENU LABEL Boot existing OS
+	COM32 chain.c32
+	APPEND hd0 0
+
+LABEL Windows
+	MENU LABEL Boot existing Windows
+	COM32 chain.c32
+	APPEND hd0 1
+
+LABEL memtest
+	MENU LABEL Run a ^memory test
+	text help
+			If your system is having issues, a problem with your
+			system's memory may be the cause. Use this utility to
+			see if the memory is working correctly.
+	endtext
+	KERNEL memtest
+
+LABEL hdt
+	MENU LABEL HDT (Hardware Detection Tool)
+	KERNEL hdt.c32
+
+LABEL Reiniciar
+	MENU LABEL Reiniciar
+	COM32 reboot.c32
+
+LABEL Desligar
+	MENU LABEL Desligar
+	COM32 poweroff.c32
+
+EOF
 }
 
 function sh_ambiente {
@@ -103,6 +222,9 @@ function sh_ambiente {
 
 	sh_msg_info "Copiando initrd $INITRD to $DESTINITRD"
 	cp -f "$INITRD" "$DESTINITRD"
+
+	sh_configure_boot_loader "$bootloader"
+
 	replicate '#' "$(sh_maxcol)"
 }
 
@@ -123,8 +245,8 @@ function sh_choosekernel {
 		--stdout \
 		--clear \
 		--colors \
-		--menu "Kernel's in $lfs_root/$lfs_basename" \
-		0 0 25 "${array[@]}")
+		--menu "Choose Kernel's in $lfs_root/$lfs_basename" \
+		0 0 0 "${array[@]}")
 
 	exit_status=$?
 	case $exit_status in
@@ -133,6 +255,37 @@ function sh_choosekernel {
 		;;
 	esac
 	kernel_version="${xkernel#*-}"
+}
+
+function sh_choosebootloader {
+	local array=()
+	local ARRAY=(grub syslinux)
+	local ADESC=('GRand Unified Bootloader 2' 'Boot loader for the Linux operating system')
+	local sep="\xe2\x94\x82"
+	local nc=0
+	local n=0
+	local xbootloader
+
+	for key in "${ARRAY[@]}"; do
+		filename=${key##*/}
+		array+=("$filename" "$(printf "$sep%-s" "${ADESC[nc]}")")
+		((++nc))
+	done
+	xbootloader=$(dialog \
+		--default-item $bootloader \
+		--stdout \
+		--clear \
+		--colors \
+		--menu "Choose BootLoader" \
+		0 0 0 "${array[@]}")
+
+	exit_status=$?
+	case $exit_status in
+	1|255)
+		die "Cancelled!"
+		;;
+	esac
+	bootloader="${xbootloader#*-}"
 }
 
 function debug {
@@ -288,10 +441,13 @@ function sh_domkiso {
 			sh_msg_info "Pulando filesystem squashfs..."
 		fi
 	fi
-	sh_mkiso
+	case "$bootloader" in
+		grub) sh_mkiso_grub;;
+		syslinux) sh_mkiso_syslinux;;
+	esac
 }
 
-function sh_mkiso {
+function sh_mkiso_syslinux {
 	[[ ! -d "out" ]] && { mkdir -p out; }
 	[[ -e "out/$OUTPUT_ISO" ]] && {
 		sh_msg_info "Excluindo .iso antigo..."
@@ -318,10 +474,41 @@ function sh_mkiso {
             -isohybrid-gpt-basdat \
             -no-emul-boot \
             -isohybrid-mbr "$ISOLINUXDIR"/isohdpfx.bin \
-			-o "out/$OUTPUT_ISO" \
+			-output "out/$OUTPUT_ISO" \
             -volid "$VOL_ID" \
             "$TEMPDIR"
 
+	#rm -fr $TEMPDIR
+	sh_msg_info "Arquivo iso ${red}$PWD/out/$OUTPUT_ISO${reset} criado com sucesso!"
+}
+
+function sh_mkiso_grub {
+	[[ ! -d "out" ]] && { mkdir -p out; }
+	[[ -e "out/$OUTPUT_ISO" ]] && {
+		sh_msg_info "Excluindo .iso antigo..."
+		rm -f "out/$OUTPUT_ISO"
+	}
+	sh_msg_info "Criando iso out/$OUTPUT_ISO..."
+
+xorriso \
+    -as mkisofs \
+    -iso-level 3 \
+    -rock \
+    -joliet \
+    -full-iso9660-filenames \
+    -omit-period \
+    -omit-version-number \
+    -relaxed-filenames \
+    -allow-lowercase \
+    -eltorito-boot "$RELATIVE_ROOTGRUB/eltorito.img" \
+    -no-emul-boot \
+    -boot-load-size 4 \
+    -boot-info-table \
+    -cache-inodes \
+    -rational-rock \
+	-output "out/$OUTPUT_ISO" \
+    -volid "${VOL_ID}" \
+    $TEMPDIR >/dev/null 2>&-
 	#rm -fr $TEMPDIR
 	sh_msg_info "Arquivo iso ${red}$PWD/out/$OUTPUT_ISO${reset} criado com sucesso!"
 }
