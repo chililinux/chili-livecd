@@ -1,0 +1,738 @@
+#!/bin/bash
+#usermod -d /home/new_user -m user
+#usermod -l new_user user
+
+#debug
+export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+#set -x
+set -e
+
+function sh_diahora {
+	local DIAHORA=$(date +"%d%m%Y-%T")
+	local DIAHORA=${DIAHORA//:/}
+	printf "%s\n" "$DIAHORA"
+}
+
+function die {
+	printf "${red}$CROSS ${pink}%03d/%03d => ${red}$(gettext "FATAL:") %s\n\033[m" "$ncontador" "$njobs" "$@"
+	exit 1
+}
+
+#global system
+_VERSION_='1.60.20230725'
+DEPENDENCIES=(printf tput xorriso mksquashfs stat whiptail)
+_APP_="${0##*/}"
+CREATESFS=1
+declare -g TICK="${white}[${COL_LIGHT_GREEN}✓${COL_NC}${white}]"
+declare -g CROSS="${white}[${COL_LIGHT_RED}✗${COL_NC}$white]"
+declare -g BOOTLOG="/tmp/$APP-$(sh_diahora).log"
+declare -g LOGGER='/dev/tty8'
+declare -gi quiet=0
+declare -g use_color=1
+declare -gi contador=0
+declare -gi njobs=10
+
+trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
+set -e
+
+function sh_configure {
+	##########################################################
+	declare -g distro_name='CHILI'
+	declare -g lfs_de='xfce'
+	declare -g lfs_version='live'
+	declare -g lfs_root='/lfs'
+	declare -g lfs_basename='chili'
+	declare -g squashfs_name='squashfs.img'
+	declare -g bootloader='syslinux'
+	##########################################################
+	declare -g kernel_version='6.1.28-lts-chili'
+	if [[ ! -d "$lfs_root/$lfs_basename" ]]; then
+		die "$lfs_root/$lfs_basename não existe"
+	fi
+	sh_choosekernel
+	sh_choosebootloader
+	##########################################################
+	declare -g COMPRESSION="gzip"
+	declare -g ARCH="x86_64"
+	declare -g ORIGEM="$lfs_root/$lfs_basename"
+	declare -g LOCALDIR="$PWD"
+	declare -g TEMPDIR="$LOCALDIR/$lfs_version/$lfs_basename"
+	declare -g ISOLINUXDIR="$LOCALDIR/isolinux"
+	declare -g date_ym=$(date +"%Y%m")
+	declare -g date_ymd=$(date +"%Y.%m.%d")
+	declare -g VOL_ID="${distro_name}_${date_ym}"
+	declare -g OUTPUT_ISO="$distro_name-$lfs_version-$lfs_de-$kernel_version-$ARCH-$date_ymd.iso"
+	declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
+#	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version-iso.img"
+	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
+	declare -g DESTKERNEL="$TEMPDIR/boot/vmlinuz"
+	declare -g DESTINITRD="$TEMPDIR/boot/initrd"
+	declare -g sfs="$TEMPDIR/LiveOS/${squashfs_name}"
+	declare -g ROOTGRUB="$TEMPDIR/boot/grub"
+	declare -g RELATIVE_ROOTGRUB="boot/grub"
+}
+
+function sh_configure_boot_loader {
+	case "$bootloader" in
+		grub) sh_create_conf_grub;;
+		syslinux) sh_create_conf_syslinux;;
+	esac
+}
+
+function sh_create_conf_grub {
+#	cat >$TEMPDIR/boot/grub/grub.cfg <<-EOF
+#set default="0"
+#set timeout=5
+#set menu_color_normal=white/blue
+#set menu_color_highlight=black/light-gray
+#set menu_title="Chili GNU/Linux LiveCD"
+#set theme=(cd)/boot/grub/themes/chili/theme.txt
+#
+#if loadfont (cd)/boot/x86_64/grub/themes/chili/terminus-14.pf2; then
+#    set gfxmode=auto
+#    insmod efi_gop
+#    insmod efi_uga
+#    insmod gfxterm
+#    terminal_output gfxterm
+#fi
+#
+#menuentry "Chili GNU/Linux Live $kernel_version [x86_64]" {
+#    set gfxpayload=keep
+#	linux	(cd)/boot/vmlinuz boot=live noeject noprompt archisobasedir=live archisolabel=$VOL_ID quiet splash \
+#			root:live:CDLABEL=$VOL_ID \
+#			rd.live.overlay.overlayfs=1
+#	initrd	(cd)/boot/initrd
+#}
+#
+#menuentry "Chili GNU/Linux Live $kernel_version [single]" {
+#	linux	(cd)/boot/vmlinuz boot=live noeject noprompt archisobasedir=live archisolabel=$VOL_ID single
+#	initrd	(cd)/boot/initrd
+#}
+#
+#menuentry "Chili GNU/Linux Live $kernel_version [x86_64] (nomodeset)" {
+#	linux	(cd)/boot/vmlinuz boot=live nomodeset noeject noprompt archisobasedir=live archisolabel=$VOL_ID quiet splash
+#	initrd	(cd)/boot/initrd
+##	linux	($root)/vmlinuz boot=live nomodeset
+##	initrd	($root)/initrd
+#}
+#EOF
+
+	cat >$TEMPDIR/boot/grub/grub.cfg <<-EOF
+insmod usbms
+insmod usb_keyboard
+insmod part_gpt
+insmod part_msdos
+insmod fat
+insmod iso9660
+insmod udf
+insmod ext2
+insmod reiserfs
+insmod ntfs
+insmod hfsplus
+insmod linux
+insmod chain
+
+if [ -e "${prefix}/${grub_cpu}-${grub_platform}/all_video.mod" ]; then
+    insmod all_video
+else
+    insmod efi_gop
+    insmod efi_uga
+    insmod video_bochs
+    insmod video_cirrus
+fi
+insmod font
+
+if loadfont "(cd)/boot/grub/fonts/unicode.pf2" ; then
+    insmod gfxterm
+    set gfxmode="auto"
+
+    terminal_input console
+    terminal_output gfxterm
+
+    insmod png
+    background_image "(cd)/boot/isolinux/splash.png"
+fi
+insmod gfxmenu
+loadfont (cd)/boot/grub/themes/chili/dejavu_10.pf2
+loadfont (cd)/boot/grub/themes/chili/terminus-14.pf2
+loadfont (cd)/boot/grub/themes/chili/terminus-16.pf2
+insmod png
+set theme=(cd)/boot/grub/themes/chili/theme.txt
+export theme
+
+if [ cpuid -l ]; then
+	menuentry "Chili Linux Live $kernel_version x86_64" {
+        set gfxpayload="keep"
+        linux (cd)/boot/vmlinuz \
+		boot=live noeject noprompt archisobasedir=live archisolabel=$VOL_ID quiet splash \
+		root=live:CDLABEL=$VOL_ID ro init=/sbin/init \
+		rd.luks=0 rd.md=0 rd.dm=0 loglevel=4 gpt add_efi_memmap \
+		vconsole.unicode=1 vconsole.keymap=br-abnt2 locale.LANG=pt_BR \
+		rd.live.overlay.overlayfs=1
+        initrd (cd)/boot/initrd
+    }
+
+	menuentry "Chili Linux Live $kernel_version x86_64 (modo de recuperação)" {
+        set gfxpayload="keep"
+        linux (cd)/boot/vmlinuz \
+		boot=live noeject noprompt archisobasedir=live archisolabel=$VOL_ID \
+		root=live:CDLABEL=$VOL_ID ro init=/sbin/init \
+		rd.luks=0 rd.md=0 rd.dm=0 loglevel=4 gpt add_efi_memmap \
+		vconsole.unicode=1 vconsole.keymap=br-abnt2 locale.LANG=pt_BR \
+		rd.live.overlay.overlayfs=1 single
+        initrd (cd)/boot/initrd
+    }
+
+	if [ ${grub_platform} == "efi" ]; then
+		menuentry 'UEFI Firmware Settings' --id 'uefi-firmware' {
+			fwsetup
+		}
+		menuentry "UEFI Shell" {
+			insmod fat
+			insmod chain
+			search --no-floppy --set=root --file /shellx64.efi
+			chainloader /shellx64.efi
+		}
+	fi
+
+	if [ "${grub_platform}" == "pc" ]; then
+		menuentry "Microsoft Windows Vista/7/8/8.1/10 BIOS/MBR" {
+			insmod part_msdos
+			insmod ntfs
+			insmod ntldr
+			search --no-floppy --fs-uuid --set=root --hint-bios=hd0,msdos1 --hint-efi=hd0,msdos1 --hint-baremetal=ahci0,msdos1 XXXX-XXXX
+			ntldr /bootmgr
+		}
+	fi
+
+	if [ "${grub_platform}" == "pc" ]; then
+		menuentry "Microsoft Windows XP" {
+			insmod part_msdos
+			insmod ntfs
+			insmod ntldr
+			search --no-floppy --fs-uuid --set=root --hint-bios=hd0,msdos1 --hint-efi=hd0,msdos1 --hint-baremetal=ahci0,msdos1 XXXX-XXXX
+			ntldr /ntldr
+		}
+	fi
+
+	if [ -f  ${config_directory}/custom.cfg ]; then
+		source ${config_directory}/custom.cfg
+	elif [ -z "${config_directory}" -a -f  $prefix/custom.cfg ]; then
+		source $prefix/custom.cfg
+	fi
+fi
+
+EOF
+
+	sh_msg_info "grub-mkimage --output=core.img biosdisk iso9660 --format=i386-pc --prefix="/$RELATIVE_ROOTGRUB""
+	grub-mkimage --output=core.img biosdisk iso9660 --format=i386-pc --prefix="/$RELATIVE_ROOTGRUB"
+
+	sh_msg_info "cat /usr/lib/grub/i386-pc/cdboot.img core.img >eltorito.img"
+	cat /usr/lib/grub/i386-pc/cdboot.img core.img >eltorito.img
+
+	sh_msg_info "find /usr/lib/grub/ -iname 'cdboot.img' -exec cp -v {} $ROOTGRUB \;"
+	find /usr/lib/grub/ -iname 'cdboot.img' -exec cp {} $ROOTGRUB \;
+
+	sh_msg_info "cp eltorito.img $ROOTGRUB"
+	cp eltorito.img $ROOTGRUB
+
+	sh_msg_info "cp core.img $ROOTGRUB"
+	cp core.img $ROOTGRUB
+
+#	sh_msg_info "cd /usr/lib/grub/i386-pc"
+#	if pushd /usr/lib/grub/i386-pc >/dev/null 2>&- ; then
+#	    for a in *.mod efiemu??.o command.lst moddep.lst fs.lst handler.lst parttool.lst; do
+#	        if test -e $a; then
+#	            [[ -e $ROOTGRUB/$a ]] || {
+#	                sh_msg_info "cp $a $ROOTGRUB/"
+#                cp $a $ROOTGRUB/
+#	            }
+#	        fi
+#	    done
+#	    popd >/dev/null 2>&-
+#	fi
+}
+
+function sh_create_conf_syslinux {
+	sh_msg_info "Criando CFG: ${cyan}$TEMPDIR/boot/isolinux/isolinux.cfg${reset}"
+	cat >$TEMPDIR/boot/isolinux/isolinux.cfg <<-EOF
+UI vesamenu.c32
+PROMPT 0
+TIMEOUT 100
+ONTIMEOUT linux
+
+MENU RESOLUTION 1024 768
+MENU BACKGROUND splash.png
+MENU ROWS 9
+MENU VSHIFT 8
+MENU COLOR border       30;44   #40ffffff #a0000000 std
+MENU COLOR title        1;36;44 #9033ccff #a0000000 std
+MENU COLOR sel          7;37;40 #e0ffffff #20ffffff all
+MENU COLOR unsel        37;44   #50ffffff #a0000000 std
+MENU COLOR help         37;40   #c0ffffff #a0000000 std
+MENU COLOR timeout_msg  37;40   #80ffffff #00000000 std
+MENU COLOR timeout      1;37;40 #c0ffffff #00000000 std
+MENU COLOR msg07        37;40   #90ffffff #a0000000 std
+MENU COLOR tabmsg       31;40   #30ffffff #00000000 std
+
+# Refer to http://syslinux.zytor.com/wiki/index.php/Doc/menu
+MENU TITLE Chili GNU/Linux LiveCD
+
+LABEL linux
+	MENU LABEL ^Chili Linux Live $kernel_version x86_64
+	KERNEL /boot/vmlinuz
+	INITRD 	/boot/initrd
+	APPEND archisobasedir=live archisolabel=$VOL_ID vga=791 root=live:CDLABEL=$VOL_ID init=/sbin/init ro rd.luks=0 rd.md=0 rd.dm=0 loglevel=4 vconsole.unicode=1 vconsole.keymap=br-abnt2 locale.LANG=pt_BR rd.live.overlay.overlayfs=1
+
+LABEL linux-single
+	MENU LABEL ^Chili Linux Live $kernel_version x86_64 [single]
+	LINUX	/boot/vmlinuz
+	INITRD 	/boot/initrd
+	APPEND 	archisobasedir=live archisolabel=$VOL_ID vga=791 root=live:CDLABEL=$VOL_ID init=/sbin/init ro rd.luks=0 rd.md=0 rd.dm=0 loglevel=4 vconsole.unicode=1 vconsole.keymap=br-abnt2 locale.LANG=pt_BR rd.live.overlay.overlayfs=1 single
+
+LABEL linuxram
+	MENU LABEL ^Chili Linux Live $kernel_version x86_64 [RAM]
+	KERNEL /boot/vmlinuz
+	INITRD 	/boot/initrd
+	APPEND archisobasedir=live archisolabel=$VOL_ID vga=791 root=live:CDLABEL=$VOL_ID init=/sbin/init ro rd.luks=0 rd.md=0 rd.dm=0 loglevel=4 vconsole.unicode=1 vconsole.keymap=br-abnt2 locale.LANG=pt_BR rd.live.overlay.overlayfs=1 rd.live.ram
+
+LABEL existing
+	MENU LABEL Boot first HD found by BIOS
+	COM32 chain.c32
+	APPEND hd0 0
+
+LABEL Windows
+	MENU LABEL Boot existing ^Windows
+	COM32 chain.c32
+	APPEND hd0 1
+
+LABEL memtest
+	MENU LABEL Run Memtest86+ (RAM test)
+	text help
+		If your system is having issues, a problem with your
+		system's memory may be the cause. Use this utility to
+		see if the memory is working correctly.
+	endtext
+	LINUX /boot/memtest.bin
+
+LABEL hdt
+	MENU LABEL ^HDT (Hardware Detection Tool)
+	KERNEL hdt.c32
+
+LABEL Reiniciar
+	MENU LABEL ^Reiniciar
+	COM32 reboot.c32
+
+LABEL Desligar
+	MENU LABEL ^Desligar
+	COM32 poweroff.c32
+
+EOF
+}
+
+function sh_create_conf_efi {
+	# criar uma imagem inicializável para o GRUB EFI:
+	grub-mkstandalone \
+    	--format=x86_64-efi \
+	    --output=$HOME/LIVE_BOOT/tmp/bootx64.efi \
+	    --locales="" \
+	    --fonts="" \
+    	"boot/grub/grub.cfg=$HOME/LIVE_BOOT/tmp/grub-standalone.cfg"
+
+	# imagem de disco de inicialização FAT16 UEFI contendo o carregador de inicialização EFI.
+	# Observe o uso dos comandos “mmd” e “mcopy” para copiar nosso carregador de boot UEFI (bootx64.efi):
+	(cd $HOME/LIVE_BOOT/staging/EFI/boot && \
+    	dd if=/dev/zero of=efiboot.img bs=1M count=20 && \
+	    mkfs.vfat efiboot.img && \
+	    mmd -i efiboot.img efi efi/boot && \
+	    mcopy -vi efiboot.img $HOME/LIVE_BOOT/tmp/bootx64.efi ::efi/boot/
+	)
+}
+
+function sh_ambiente {
+	local lnotexist=0
+	replicate '#' "$(sh_maxcol)"
+	sh_msg_info "Criando ISO: ${cyan}$OUTPUT_ISO${reset}"
+	sh_msg_info "ISO LABEL  : ${cyan}$VOL_ID${reset}"
+	sh_msg_info "ISO ORIGEM : ${cyan}$ORIGEM${reset}"
+	sh_msg_info "DESTINO    : ${cyan}$sfs${reset}"
+
+	sh_msg_info "Criando diretorio temporario $TEMPDIR"
+	[[ -d "$TEMPDIR" ]] || lnotexist=1
+	[[ -d "$TEMPDIR" ]] || mkdir -p "$TEMPDIR"/{boot/{grub/fonts,isolinux},LiveOS}
+
+	sh_msg_info "Copiando alguns necessarios arquivos..."
+	#	for file in $isolinux_files; do
+	#		cp $ISOLINUXDIR/$file $TEMPDIR/isolinux
+	#	done
+	#	cp $ISOLINUXDIR/efiboot.img $TEMPDIR/isolinux
+	#	cp $LOCALDIR/model/efi/boot/bootx64.efi $TEMPDIR/efi/boot
+
+#	if ((lnotexist)); then
+#		cp -Rpva "$LOCALDIR"/model-arch/. "$TEMPDIR"/.
+		rsync -Crazp "$LOCALDIR"/model-void/ "$TEMPDIR"/
+#	fi
+
+	echo "$distro_name" >"$TEMPDIR/boot/isolinux/venomlive"
+	[ -d $PWD/virootfs ] && cp -aR $PWD/virootfs "$TEMPDIR"
+
+	sh_msg_info "Copiando kernel $KERNEL to $DESTKERNEL"
+	cp -f "$KERNEL" "$DESTKERNEL"
+
+	sh_msg_info "Copiando initrd $INITRD to $DESTINITRD"
+	cp -f "$INITRD" "$DESTINITRD"
+
+	sh_configure_boot_loader "$bootloader"
+
+	replicate '#' "$(sh_maxcol)"
+}
+
+function sh_choosekernel {
+	local array=()
+	local ARRAY=()
+	local sep="\xe2\x94\x82"
+	local nc=0
+	local n=0
+
+	mapfile -t ARRAY <<<"$(find $lfs_root/$lfs_basename/boot/ -iname 'vmlinuz*')"
+	for key in "${ARRAY[@]}"; do
+		filename=${key##*/}
+		array+=("$filename" "$(printf "$sep%-s" "$(file "$key")")")
+	done
+	xkernel=$(dialog \
+		--default-item vmlinuz-$kernel_version \
+		--stdout \
+		--clear \
+		--colors \
+		--menu "Choose Kernel's in $lfs_root/$lfs_basename" \
+		0 0 0 "${array[@]}")
+
+	exit_status=$?
+	case $exit_status in
+	1|255)
+		die "Cancelled!"
+		;;
+	esac
+	kernel_version="${xkernel#*-}"
+}
+
+function sh_choosebootloader {
+	local array=()
+	local ARRAY=(syslinux grub)
+	local ADESC=('Boot loader for the Linux operating system' 'GRand Unified Bootloader 2')
+	local sep="\xe2\x94\x82"
+	local nc=0
+	local n=0
+	local xbootloader
+
+	for key in "${ARRAY[@]}"; do
+		filename=${key##*/}
+		array+=("$filename" "$(printf "$sep%-s" "${ADESC[nc]}")")
+		((++nc))
+	done
+	xbootloader=$(dialog \
+		--default-item $bootloader \
+		--stdout \
+		--clear \
+		--colors \
+		--menu "Choose BootLoader" \
+		0 0 0 "${array[@]}")
+
+	exit_status=$?
+	case $exit_status in
+	1|255)
+		die "Cancelled!"
+		;;
+	esac
+	bootloader="${xbootloader#*-}"
+}
+
+function debug {
+	whiptail \
+        --fb \
+        --title "[debug]$0" \
+        --backtitle "[debug]$0" \
+        --yesno "${*}\n" \
+        0 0
+    result=$?
+    if ((result)); then
+        exit
+    fi
+    return $result
+}
+
+function sh_setvarcolors {
+    sh_check_terminal
+    if ((use_color)); then
+        bold=$(tput bold)
+        red=$(tput bold)$(tput setaf 196)
+        reset=$(tput sgr0)
+        pink=$(tput setaf 5)
+        yellow=$(tput bold)$(tput setaf 3)
+        green=$(tput bold)$(tput setaf 2)
+        cyan=$(tput setaf 6)
+    else
+        unset bold red reset pink yellow green cyan
+    fi
+}
+
+function sh_make_dir_layout {
+	local LFS=$lfs_root/$lfs_basename
+
+	set +e
+	mkdir -pv $LFS/{etc,var} $LFS/usr/{bin,lib,sbin}
+
+	for i in bin lib sbin; do
+	  ln -sv usr/$i $LFS/$i
+	done
+
+	case $(uname -m) in
+	  x86_64) mkdir -pv $LFS/lib64 ;;
+	esac
+	set -e
+}
+
+function sh_maxcol {
+	COLUMNS=$(stty size)           # Obtém as dimensões do terminal usando o comando "stty size" e armazena o resultado na variável "COLUMNS".
+	COLUMNS=${COLUMNS##* }         # Usa a expansão de parâmetro para obter apenas o número de colunas do resultado obtido em "COLUMNS".
+	((COLUMNS <= 0)) && COLUMNS=80 # Verifica se o número de colunas é menor ou igual a 0. Se for, atribui o valor padrão de 80 colunas.
+	echo $COLUMNS                  # Exibe o número de colunas (tamanho máximo) no terminal.
+}
+
+function replicate {
+	local Var
+	printf -v Var %"$2"s " "
+	echo "${Var// /$1}"
+}
+
+function sh_setvarcolors {
+	if tput setaf 1 &>/dev/null; then
+		tput sgr0 # reset colors
+		#bold=$(tput bold);
+		reset=$(tput sgr0)
+		#blue=$(tput setaf 33);
+		cyan=$(tput setaf 37)
+		green=$(tput setaf 2)
+		orange=$(tput setaf 166)
+		#purple=$(tput setaf 125);
+		red=$(tput setaf 124)
+		#violet=$(tput setaf 61);
+		white=$(tput setaf 15)
+		yellow=$(tput setaf 136)
+		pink=$(tput setaf 129)
+		#black=$(tput setaf 0);
+	else
+		#bold='';
+		reset="\e[0m"
+		reset="\e[0m"
+		#blue="\e[1;34m";
+		cyan="\e[1;36m"
+		green="\e[1;32m"
+		orange="\e[1;33m"
+		#purple="\e[1;35m";
+		red="\e[1;31m"
+		#violet="\e[1;35m";
+		white="\e[1;37m"
+		yellow="\e[1;33m"
+		pink="\033[35;1m"
+		#black="\e[1;30m";
+	fi
+}
+
+function sh_msg_info {
+	local _msg="${1}"
+	((quiet)) || printf "[%s] ${yellow}INFO${reset}: %s\n" "${red}${_APP_}${reset}" "${_msg}"
+}
+
+function sh_msg_warning {
+	local _msg="${1}"
+	printf '[%s] WARNING: %s\n' "${_APP_}" "${_msg}" >&2
+}
+
+function sh_msg_error {
+	local _msg="${1}"
+	local _error="${2}"
+	printf '[%s] ERROR: %s\n' "${_APP_}" "${_msg}" >&2
+	if ((_error > 0)); then
+		exit "${_error}"
+	fi
+}
+
+function sh_info {
+	whiptail \
+		--fb \
+		--title "[debug]$0" \
+		--backtitle "[debug]$0" \
+		--yesno "${*}\n" \
+		0 0
+	result=$?
+	if ((result)); then
+		exit
+	fi
+	return $result
+}
+
+function sh_mksquashfs {
+	if [[ -e "$sfs" ]]; then
+		sh_msg_info "Removendo OLD file squashfs ${sfs}..."
+		rm -f $sfs
+	fi
+
+	#	info "  ORIGEM : $ORIGEM\n" "DESTINO : $TEMPDIR/filesystem/${squashfs_name}"
+
+	case $COMPRESSION in
+	gzip) mksquashfs "$ORIGEM" "$sfs" -noappend -ef exclude_dir -comp gzip -Xcompression-level 1 ;;
+	xz)   mksquashfs "$ORIGEM" "$sfs" -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100% ;;
+	zstd) mksquashfs "$ORIGEM" "$sfs" -noappend -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1 ;;
+	lzma) mksquashfs "$ORIGEM" "$sfs" -noappend -ef exclude_dir -b 1M -comp lzma ;;
+	lz4)  mksquashfs "$ORIGEM" "$sfs" -noappend -ef exclude_dir -b 1M -comp lz4 -Xhc ;;
+	esac
+}
+
+function sh_domkiso {
+	if ((CREATESFS)); then
+		sh_mksquashfs
+		:
+	else
+		if ! [[ -e "$sfs" ]]; then
+			sh_msg_info "filesystem squashfs nao localizado, reconstruindo..."
+			sh_msg_info
+		else
+			sh_msg_info "Pulando filesystem squashfs..."
+		fi
+	fi
+	case "$bootloader" in
+		grub) sh_mkiso_grub;;
+		syslinux) sh_mkiso_syslinux;;
+	esac
+}
+
+function sh_mkiso_syslinux {
+	[[ ! -d "out" ]] && { mkdir -p out; }
+	[[ -e "out/$OUTPUT_ISO" ]] && {
+		sh_msg_info "Excluindo .iso antigo..."
+		rm -f "out/$OUTPUT_ISO"
+	}
+	sh_msg_info "Criando iso out/$OUTPUT_ISO..."
+
+		xorriso \
+            -as mkisofs \
+            -iso-level 3 \
+            -rock \
+            -joliet \
+            -full-iso9660-filenames \
+            -omit-period \
+            -omit-version-number \
+            -relaxed-filenames \
+            -allow-lowercase \
+            -eltorito-catalog  boot/isolinux/boot.cat \
+            -eltorito-boot     boot/isolinux/isolinux.bin \
+            -no-emul-boot \
+            -boot-load-size 4 \
+            -boot-info-table \
+            -isohybrid-mbr "$ISOLINUXDIR"/isohdpfx.bin \
+            -eltorito-alt-boot -e boot/grub/efiboot.img \
+            -isohybrid-gpt-basdat \
+            -no-emul-boot \
+			-output "out/$OUTPUT_ISO" \
+            -volid "$VOL_ID" \
+            "$TEMPDIR"
+
+	#rm -fr $TEMPDIR
+	sh_msg_info "Arquivo iso ${red}$PWD/out/$OUTPUT_ISO${reset} criado com sucesso!"
+}
+
+function sh_mkiso_grub {
+	[[ ! -d "out" ]] && { mkdir -p out; }
+	[[ -e "out/$OUTPUT_ISO" ]] && {
+		sh_msg_info "Excluindo .iso antigo..."
+		rm -f "out/$OUTPUT_ISO"
+	}
+	sh_msg_info "Criando iso out/$OUTPUT_ISO..."
+
+xorriso \
+    -as mkisofs \
+    -iso-level 3 \
+    -rock \
+    -joliet \
+    -full-iso9660-filenames \
+    -omit-period \
+    -omit-version-number \
+    -relaxed-filenames \
+    -allow-lowercase \
+    -eltorito-boot "$RELATIVE_ROOTGRUB/eltorito.img" \
+    -no-emul-boot \
+    -boot-load-size 4 \
+    -boot-info-table \
+    -cache-inodes \
+    -rational-rock \
+	-output "out/$OUTPUT_ISO" \
+    -volid "${VOL_ID}" \
+    $TEMPDIR >/dev/null 2>&-
+	#rm -fr $TEMPDIR
+	sh_msg_info "Arquivo iso ${red}$PWD/out/$OUTPUT_ISO${reset} criado com sucesso!"
+}
+
+function sh_usage {
+	echo -e "${orange}uso${green}:${white}  ${_APP_} ${green}<${white}operação${green}> [${white}...${green}]${reset}"
+	echo -e "operações:"
+	echo -e "${pink}  -h${cyan}, display this help and exit"
+	echo -e "${pink}  -n${cyan}, NAO cria squashfs, usa antigo"
+	echo -e "${pink}  -y${cyan}, cria novo squashfs"
+	echo -e "${pink}  -x${cyan}, usa compression XZ"
+	echo -e "${pink}  -z${cyan}, usa compression ZSTD"
+	echo -e "${pink}  -g${cyan}, usa cmpression GZIP (default)"
+	echo -e "${pink}  -q${cyan}, quiet"
+	exit 1
+}
+
+function sh_check_deps {
+	local errorFound=0
+	declare -a missing
+
+	for d in "${DEPENDENCIES[@]}"; do
+		[[ -z $(command -v "$d") ]] && missing+=("$d") && errorFound=1 && printf '%s\n' "${red}ERRO${reset}: não encontrei o comando ${orange}'$d'${reset}"
+	done
+	#[[ ${#missing[@]} -ne 0 ]]
+	if ((errorFound)); then
+		erro "#### IMPOSSÍVEL CONTINUAR ####"
+		msg "Esse script precisa dos comandos listados acima" >&2
+		msg "Instale-os e/ou verifique se estão no seu \$PATH" >&2
+		exit 1
+	fi
+}
+
+function sh_init {
+	sh_setvarcolors
+	sh_check_deps
+
+	if [[ "$1" = "-h" ]] || [[ "$1" = "--help" ]] || [[ "$1" = "help" ]] || [[ "$1" = "-help" ]]; then
+		sh_usage
+	fi
+
+	while getopts "yYnNhHxXzZgGqQ" o; do
+		case "${o}" in
+		q | Q) quiet=1 ;;
+		y | Y) CREATESFS=1 ;;
+		n | N) CREATESFS=0 ;;
+		x | X) COMPRESSION="xz" ;;
+		z | Z) COMPRESSION="zstd" ;;
+		g | G) COMPRESSION="gzip" ;;
+		h | H) sh_usage ;;
+		*) sh_usage ;;
+		esac
+	done
+	shift $((OPTIND - 1))
+
+	if ((EUID != 0)); then
+		sh_msg_error "${_APP_} must be run as root." 1
+	fi
+
+	sh_setvarcolors
+	sh_configure
+	sh_make_dir_layout
+	sh_ambiente
+	sh_domkiso
+}
+
+sh_init "$@"
