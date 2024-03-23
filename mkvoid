@@ -7,6 +7,60 @@ export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 #set -x
 set -e
 
+function sh_configure {
+	##########################################################
+	declare -g distro_name='MAZON'
+	declare -g lfs_de='xfce'
+	declare -g lfs_version='live'
+	declare -g lfs_root='/lfs'
+	declare -g lfs_basename='mazon'
+	declare -g bootloader='syslinux'
+	declare -g initcpio='mkinitcpio' # dracut # mkinitramfs
+	##########################################################
+	declare -g kernel_version='6.1.28-lts-chili'
+	if [[ ! -d "$lfs_root/$lfs_basename" ]]; then
+		die "$lfs_root/$lfs_basename não existe"
+	fi
+	##########################################################
+	declare -g COMPRESSION="gzip"
+	declare -g ARCH="x86_64"
+	declare -g ORIGEM="$lfs_root/$lfs_basename"
+	declare -g LOCALDIR="$PWD"
+	declare -g TEMPDIR="$LOCALDIR/$lfs_version/$lfs_basename"
+	declare -g ISOLINUXDIR="$LOCALDIR/isolinux"
+	declare -g date_ym=$(date +"%Y%m")
+	declare -g date_ymd=$(date +"%Y.%m.%d")
+	declare -g VOL_ID="${distro_name}_${date_ym}"
+	##########################################################
+	sh_choosekernel
+	sh_choosebootloader
+	sh_choosemakeinitramfs
+	case $initcpio in
+	mkinitcpio)
+		declare -g squashfs_name='airootfs.sfs'
+		declare -g sfs="$TEMPDIR/LiveOS/${squashfs_name}"
+		;;
+	dracut)
+		declare -g squashfs_name='squashfs.img'
+		declare -g sfs="$TEMPDIR/LiveOS/${squashfs_name}"
+		;;
+	mkinitramfs)
+		declare -g squashfs_name='root.sfs'
+		declare -g sfs="$TEMPDIR/filesystem/${squashfs_name}"
+		;;
+	esac
+	##########################################################
+	declare -g OUTPUT_ISO="$distro_name-$lfs_version-$lfs_de-$kernel_version-$ARCH-$date_ymd.iso"
+	declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
+	#	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version-iso.img"
+	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
+	declare -g DESTKERNEL="$TEMPDIR/boot/vmlinuz"
+	declare -g DESTINITRD="$TEMPDIR/boot/initrd"
+	declare -g ROOTGRUB="$TEMPDIR/boot/grub"
+	declare -g RELATIVE_ROOTGRUB="boot/grub"
+	sh_cleanfs
+}
+
 function sh_diahora {
 	local DIAHORA=$(date +"%d%m%Y-%T")
 	local DIAHORA=${DIAHORA//:/}
@@ -66,60 +120,6 @@ function sh_info {
 		exit
 	fi
 	return $result
-}
-
-function sh_configure {
-	##########################################################
-	declare -g distro_name='MAZON'
-	declare -g lfs_de='xfce'
-	declare -g lfs_version='live'
-	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='mazon'
-	declare -g bootloader='syslinux'
-	declare -g initcpio='mkinitcpio' # dracut # mkinitramfs
-	##########################################################
-	declare -g kernel_version='6.1.28-lts-chili'
-	if [[ ! -d "$lfs_root/$lfs_basename" ]]; then
-		die "$lfs_root/$lfs_basename não existe"
-	fi
-	##########################################################
-	declare -g COMPRESSION="gzip"
-	declare -g ARCH="x86_64"
-	declare -g ORIGEM="$lfs_root/$lfs_basename"
-	declare -g LOCALDIR="$PWD"
-	declare -g TEMPDIR="$LOCALDIR/$lfs_version/$lfs_basename"
-	declare -g ISOLINUXDIR="$LOCALDIR/isolinux"
-	declare -g date_ym=$(date +"%Y%m")
-	declare -g date_ymd=$(date +"%Y.%m.%d")
-	declare -g VOL_ID="${distro_name}_${date_ym}"
-	##########################################################
-	sh_choosekernel
-	sh_choosebootloader
-	sh_choosemakeinitramfs
-	case $initcpio in
-	mkinitcpio)
-		declare -g squashfs_name='airootfs.sfs'
-		declare -g sfs="$TEMPDIR/LiveOS/${squashfs_name}"
-		;;
-	dracut)
-		declare -g squashfs_name='squashfs.img'
-		declare -g sfs="$TEMPDIR/LiveOS/${squashfs_name}"
-		;;
-	mkinitramfs)
-		declare -g squashfs_name='root.sfs'
-		declare -g sfs="$TEMPDIR/filesystem/${squashfs_name}"
-		;;
-	esac
-	##########################################################
-	declare -g OUTPUT_ISO="$distro_name-$lfs_version-$lfs_de-$kernel_version-$ARCH-$date_ymd.iso"
-	declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
-	#	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version-iso.img"
-	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
-	declare -g DESTKERNEL="$TEMPDIR/boot/vmlinuz"
-	declare -g DESTINITRD="$TEMPDIR/boot/initrd"
-	declare -g ROOTGRUB="$TEMPDIR/boot/grub"
-	declare -g RELATIVE_ROOTGRUB="boot/grub"
-	sh_cleanfs
 }
 
 function sh_cleanfs {
