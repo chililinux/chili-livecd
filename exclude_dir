@@ -3,3 +3,15 @@
 /lfs/chili/github
 /lfs/chili/packages
 /lfs/chili/sources
+
+/lfs/mazon/blfs_root
+/lfs/mazon/jhalfs
+/lfs/mazon/github
+/lfs//mazon/packages
+/lfs/mazon/sources
+/lfs/mazon/repo
+/lfs/mazon/var/cache/fetch/archives
+/lfs/mazon/var/cache/fetch/packages
+/lfs/mazon/var/cache/fetch/remove
+/lfs/mazon/var/cache/fetch/sources
+/lfs/mazon/var/cache/fetch/work

@@ -1,19 +1,47 @@
-#!/bin/bash
-#usermod -d /home/new_user -m user
-#usermod -l new_user user
+#!/usr/bin/env bash
+#shellcheck disable=SC2034,SC2015,SC2154,SC2140,SC2016,SC2153,SC2068,SC2155,SC2059
+#shellcheck source=/dev/null
 
+#   mkiso - create custom iso distro's
+#   Chili GNU/Linux - https://github.com/vcatafesta/ChiliOS
+#   Chili GNU/Linux - https://chililinux.com
+#   Chili GNU/Linux - https://chilios.com.br
+#   MazonOS GNU/Linux - https://mazonos.com
+#
+#   Created: 2019/04/05
+#   Altered: 2024/03/24
+#
+#   Copyright (c) 2019-2022, Vilmar Catafesta <vcatafesta@gmail.com>
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#########################################################################
 #debug
-export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
+export PS4='${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 #set -x
 set -e
+shopt -s extglob
+
+#usermod -d /home/new_user -m user
+#usermod -l new_user user
 
 function sh_configure {
 	##########################################################
 	declare -g distro_name='MAZON'
-	declare -g lfs_de='xfce'
+	declare -g distro_de='xfce'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='mazon'
+	declare -g lfs_basename='mazon_runit'
 	declare -g bootloader='syslinux'
 	declare -g initcpio='mkinitcpio' # dracut # mkinitramfs
 	##########################################################
@@ -31,6 +59,8 @@ function sh_configure {
 	declare -g date_ym=$(date +"%Y%m")
 	declare -g date_ymd=$(date +"%Y.%m.%d")
 	declare -g VOL_ID="${distro_name}_${date_ym}"
+	declare -g capitalized_distro_name="${distro_name,,}"
+			   capitalized_distro_name="${capitalized_distro_name^}"
 	##########################################################
 	sh_choosekernel
 	sh_choosebootloader
@@ -50,7 +80,7 @@ function sh_configure {
 		;;
 	esac
 	##########################################################
-	declare -g OUTPUT_ISO="$distro_name-$lfs_version-$lfs_de-$kernel_version-$ARCH-$date_ymd.iso"
+	declare -g OUTPUT_ISO="$distro_name-$lfs_basename-$lfs_version-$distro_de-$kernel_version-$ARCH-$date_ymd.iso"
 	declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
 	#	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version-iso.img"
 	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
@@ -192,7 +222,9 @@ function sh_choosebootloader {
 function sh_choosemakeinitramfs {
 	local array=()
 	local ARRAY=(mkinitcpio dracut mkinitramfs)
-	local ADESC=('Arch,Manjaro,BigLinux,etc' 'Void' 'Mazon')
+	local ADESC=('Modular initramfs image creation utility (like Arch,Manjaro,...)'
+				 'An event driven initramfs infrastructure (Void,...)'
+				 'Low-level tool for generating an initramfs image (Venom,LFS,...)')
 	local sep="\xe2\x94\x82"
 	local nc=0
 	local n=0
@@ -405,8 +437,6 @@ function sh_create_conf_syslinux {
 	sh_msg_info "Criando CFG: ${cyan}$TEMPDIR/boot/isolinux/isolinux.cfg${reset}"
 	# Use expansão de variáveis para converter para minúsculas e, em seguida, capitalizar a primeira letra
 	local command_line
-	local capitalized_distro_name="${distro_name,,}"
-	capitalized_distro_name="${capitalized_distro_name^}"
 
 	case $initcpio in
 	mkinitcpio)
@@ -444,13 +474,13 @@ function sh_create_conf_syslinux {
 		MENU TITLE ${capitalized_distro_name} Linux LiveCD
 
 		LABEL linux
-			MENU LABEL ^${capitalized_distro_name} Linux Live $kernel_version x86_64
+			MENU LABEL ^${capitalized_distro_name} Linux ${distro_de^^} Live $kernel_version x86_64
 			KERNEL /boot/vmlinuz
 			INITRD /boot/initrd
 			APPEND  $command_line
 
 		LABEL linux-single
-			MENU LABEL ^${capitalized_distro_name} Linux Live $kernel_version x86_64 [single]
+			MENU LABEL ^${capitalized_distro_name} Linux ${distro_de^^} Live $kernel_version x86_64 [single]
 			LINUX   /boot/vmlinuz
 			INITRD  /boot/initrd
 			APPEND  $command_line single
