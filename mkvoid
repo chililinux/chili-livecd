@@ -41,9 +41,9 @@ function sh_configure {
 	declare -g distro_de='xfce'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='mazon_runit'
+	declare -g lfs_basename='mazon'
 	declare -g bootloader='syslinux'
-	declare -g initcpio='mkinitcpio' # dracut # mkinitramfs
+	declare -g initcpio='dracut' # mkinitcpio # mkinitramfs
 	##########################################################
 	declare -g kernel_version='6.1.28-lts-chili'
 	if [[ ! -d "$lfs_root/$lfs_basename" ]]; then
