@@ -7,6 +7,7 @@
 /lfs/mazon/blfs_root
 /lfs/mazon/jhalfs
 /lfs/mazon/github
+/lfs/mazon/packages
 /lfs/mazon/var/cache/fetch/archives
 /lfs/mazon/var/cache/fetch/packages
 /lfs/mazon/var/cache/fetch/remove

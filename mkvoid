@@ -82,8 +82,8 @@ function sh_configure {
 	##########################################################
 	declare -g OUTPUT_ISO="$distro_name-$lfs_basename-$lfs_version-$distro_de-$kernel_version-$ARCH-$date_ymd.iso"
 	declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
-	#	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version-iso.img"
 	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
+	[[ ! -e $INITRD ]] && INITRD="${ORIGEM}/boot/initramfs-$kernel_version.img"
 	declare -g DESTKERNEL="$TEMPDIR/boot/vmlinuz"
 	declare -g DESTINITRD="$TEMPDIR/boot/initrd"
 	declare -g ROOTGRUB="$TEMPDIR/boot/grub"
