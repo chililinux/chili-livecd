@@ -41,7 +41,7 @@ function sh_configure {
 	declare -g distro_de='xfce'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='mazon'
+	declare -g lfs_basename='jhalfs'
 	declare -g bootloader='syslinux'
 	declare -g initcpio='dracut' # mkinitcpio # mkinitramfs
 	##########################################################

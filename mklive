@@ -6,6 +6,12 @@
 #export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 #set -x
 
+function sh_diahora {
+	local DIAHORA=$(date +"%d%m%Y-%T")
+	local DIAHORA=${DIAHORA//:/}
+	printf "%s\n" "$DIAHORA"
+}
+
 #global system
 _VERSION_='1.60.20230725'
 DEPENDENCIES=(printf tput xorriso mksquashfs stat whiptail)
@@ -25,10 +31,10 @@ set -e
 
 function sh_configure {
 	##########################################################
-	declare -g distro_name='CHILI'
+	declare -g distro_name='MAZON'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='chili'
+	declare -g lfs_basename='mazon-beta'
 	declare -g squashfs_name='airootfs.sfs'
 	##########################################################
 	declare -g kernel_version='6.1.28-lts-chili'
@@ -52,12 +58,6 @@ function sh_configure {
 	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
 	declare -g DESTKERNEL="$TEMPDIR/boot/vmlinuz"
 	declare -g DESTINITRD="$TEMPDIR/boot/initrd"
-}
-
-function sh_diahora {
-	local DIAHORA=$(date +"%d%m%Y-%T")
-	local DIAHORA=${DIAHORA//:/}
-	printf "%s\n" "$DIAHORA"
 }
 
 die() {
