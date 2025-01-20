@@ -1,36 +1,59 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+# shellcheck shell=bash disable=SC1091,SC2039,SC2166,SC2155
+#
+#  mkiso
+#  Created: 2019/04/05 - 23:35 -04
+#  Altered: 2024/12/16 - 20:32 -04
+#
+#  Copyright (c) 2019-2024, Vilmar Catafesta <vcatafesta@gmail.com>
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AS IS'' AND ANY EXPRESS OR
+#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##############################################################################
+#export LANGUAGE=pt_BR
+export TEXTDOMAINDIR=/usr/share/locale
+export TEXTDOMAIN=mkiso
+
 #usermod -d /home/new_user -m user
 #usermod -l new_user user
 
 #debug
+: "${red:=$(tput bold)$(tput setaf 196)}"
+: "${green:=$(tput bold)$(tput setaf 2)}"
+: "${pink:=$(tput setaf 5)}"
 export PS4=$'${red}${0##*/}${green}[$FUNCNAME]${pink}[$LINENO]${reset} '
 #set -x
 set -e
 
-function sh_diahora {
-	local DIAHORA=$(date +"%d%m%Y-%T")
-	local DIAHORA=${DIAHORA//:/}
-	printf "%s\n" "$DIAHORA"
-}
-
-function die {
-	printf "${red}$CROSS ${pink}%03d/%03d => ${red}$(gettext "FATAL:") %s\n\033[m" "$ncontador" "$njobs" "$@"
-	exit 1
-}
-
 #global system
-_VERSION_='1.60.20230725'
-DEPENDENCIES=(printf tput xorriso mksquashfs stat whiptail)
-_APP_="${0##*/}"
-CREATESFS=1
-declare -g TICK="${white}[${COL_LIGHT_GREEN}✓${COL_NC}${white}]"
-declare -g CROSS="${white}[${COL_LIGHT_RED}✗${COL_NC}$white]"
-declare -g BOOTLOG="/tmp/$APP-$(sh_diahora).log"
-declare -g LOGGER='/dev/tty8'
-declare -gi quiet=0
-declare -g use_color=1
-declare -gi contador=0
-declare -gi njobs=10
+declare _VERSION_='1.60.20230725'
+declare DEPENDENCIES=(printf tput xorriso mksquashfs stat whiptail)
+declare _APP_="${0##*/}"
+declare CREATESFS=true
+declare -i quiet=0
+declare -i ncontador=0
+declare -i njobs=10
+: "${BOOTLOG:="/tmp/$APP-$(date +"%d%m%Y-%H%M%S").log"}"
+: "${LOGGER:='/dev/tty8'}"
 
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 set -e
@@ -40,10 +63,10 @@ function sh_configure {
 	declare -g distro_name='MAZON'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='mazon'
+	declare -g lfs_basename='lfs_base'
 	declare -g squashfs_name='root.sfs'
-#	declare -g squashfs_name='airootfs.sfs'
-#	declare -g squashfs_name='squashfs.img'
+	#	declare -g squashfs_name='airootfs.sfs'
+	#	declare -g squashfs_name='squashfs.img'
 	##########################################################
 	declare -g kernel_version='6.1.28-lts-chili'
 	if [[ ! -d "$lfs_root/$lfs_basename" ]]; then
@@ -63,7 +86,7 @@ function sh_configure {
 	declare -g OUTPUT_ISO="$distro_name-$lfs_version-$lfs_basename-$kernel_version-$date_ymd-$ARCH.iso"
 	#isolinux_files="chain.c32 isolinux.bin ldlinux.c32 libutil.c32 reboot.c32 menu.c32 vesamenu.c32 isohdpfx.bin isolinux.cfg libcom32.c32 poweroff.c32 efi.img chili10.jpg"
 	declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
-#	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version-iso.img"
+	#	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version-iso.img"
 	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
 	declare -g DESTKERNEL="$TEMPDIR/live/boot/vmlinuz"
 	declare -g DESTINITRD="$TEMPDIR/live/boot/initrd"
@@ -73,8 +96,6 @@ function sh_choosekernel {
 	local array=()
 	local ARRAY=()
 	local sep="\xe2\x94\x82"
-	local nc=0
-	local n=0
 
 	mapfile -t ARRAY <<<"$(find $lfs_root/$lfs_basename/boot/ -iname 'vmlinuz*')"
 	for key in "${ARRAY[@]}"; do
@@ -91,40 +112,122 @@ function sh_choosekernel {
 
 	exit_status=$?
 	case $exit_status in
-	1|255)
+	1 | 255)
 		die "Cancelled!"
 		;;
 	esac
 	kernel_version="${xkernel#*-}"
 }
 
-function debug {
-	whiptail \
-        --fb \
-        --title "[debug]$0" \
-        --backtitle "[debug]$0" \
-        --yesno "${*}\n" \
-        0 0
-    result=$?
-    if ((result)); then
-        exit
-    fi
-    return $result
+function die {
+	printf "${red}$CROSS ${pink}%03d/%03d => ${red}$(gettext "FATAL:") %s\n\033[m" "$ncontador" "$njobs" "$@"
+	exit 1
 }
 
-function sh_setvarcolors {
-    sh_check_terminal
-    if ((use_color)); then
-        bold=$(tput bold)
-        red=$(tput bold)$(tput setaf 196)
-        reset=$(tput sgr0)
-        pink=$(tput setaf 5)
-        yellow=$(tput bold)$(tput setaf 3)
-        green=$(tput bold)$(tput setaf 2)
-        cyan=$(tput setaf 6)
-    else
-        unset bold red reset pink yellow green cyan
-    fi
+function sh_diahora {
+	local DIAHORA
+
+	DIAHORA=$(date +"%d%m%Y-%T")
+	DIAHORA=${DIAHORA//:/}
+	printf "%s\n" "$DIAHORA"
+}
+
+function debug {
+	whiptail \
+		--fb \
+		--title "[debug]$0" \
+		--backtitle "[debug]$0" \
+		--yesno "${*}\n" \
+		0 0
+	result=$?
+	if ((result)); then
+		exit
+	fi
+	return $result
+}
+
+function sh_set_varcolors() {
+	# does the terminal support true-color?
+	if [[ -n "$(command -v "tput")" ]]; then
+		#tput setaf 127 | cat -v  #capturar saida
+		: "${RED=$(tput bold)$(tput setaf 196)}"
+		: "${GREEN=$(tput bold)$(tput setaf 2)}"
+		: "${YELLOW=$(tput bold)$(tput setaf 3)}"
+		: "${BLUE=$(tput setaf 4)}"
+		: "${PURPLE=$(tput setaf 125)}"
+		: "${CYAN=$(tput setaf 6)}"
+		: "${NC=$(tput sgr0)}"
+		: "${RESET=$(tput sgr0)}"
+		: "${BOLD=$(tput bold)}"
+		: "${black=$(tput bold)$(tput setaf 0)}"
+		: "${reverse=$(tput rev)}"
+		: "${branca=${black}$(tput setab 7)}"
+
+		: "${reset=$(tput sgr0)}"
+		: "${rst=$(tput sgr0)}"
+		: "${bold=$(tput bold)}"
+		: "${underline=$(tput smul)}"
+		: "${nounderline=$(tput rmul)}"
+		: "${reverse=$(tput rev)}"
+
+		: "${black=$(tput bold)$(tput setaf 0)}"
+		: "${red=$(tput bold)$(tput setaf 196)}"
+		: "${green=$(tput bold)$(tput setaf 2)}"
+		: "${yellow=$(tput bold)$(tput setaf 3)}"
+		: "${blue=$(tput setaf 27)}"
+		: "${pink=$(tput setaf 5)}"
+		: "${magenta=$(tput setaf 5)}"
+		: "${cyan=$(tput setaf 6)}"
+		: "${white=$(tput setaf 7)}"
+		: "${gray=$(tput setaf 8)}"
+		: "${light_red=$(tput setaf 9)}"
+		: "${light_green=$(tput setaf 10)}"
+		: "${light_yellow=$(tput setaf 11)}"
+		: "${light_blue=$(tput setaf 12)}"
+		: "${light_magenta=$(tput setaf 13)}"
+		: "${light_cyan=$(tput setaf 14)}"
+		: "${light_white=$(tput setaf 15)}"
+		: "${orange=$(tput setaf 202)}"
+		: "${purple=$(tput setaf 125)}"
+		: "${violet=$(tput setaf 61)}"
+
+		# Definir cores de fundo
+		: "${preto=$(tput setab 0)}"
+		: "${vermelho=$(tput setab 196)}"
+		: "${verde=$(tput setab 2)}"
+		: "${amarelo=$(tput setab 3)}"
+		: "${azul=$(tput setab 20)}"
+		: "${roxo=$(tput setab 5)}"
+		: "${ciano=$(tput setab 6)}"
+		: "${branca="${black}$(tput setab 7)"}"
+		: "${cinza=$(tput setab 8)}"
+		: "${laranja=$(tput setab 202)}"
+		: "${roxa=$(tput setab 125)}"
+		: "${violeta=$(tput setab 61)}"
+
+		: "${COL_NC='\e[0m'}" # No Color
+		: "${COL_LIGHT_GREEN='\e[1;32m'}"
+		: "${COL_LIGHT_RED='\e[1;31m'}"
+		: "${DONE="${COL_LIGHT_GREEN} done!${COL_NC}"}"
+		: "${OVER="\\r\\033[K"}"
+		: "${DOTPREFIX="  ${black}::${reset} "}"
+		: "${TICK="${white}[${green}✓${rst}${white}]${rst}"}"
+		: "${CROSS="${white}[${red}✗${rst}${white}]${rst}"}"
+		: "${INFO="${white}[${gray}i${rst}${white}]${rst}"}"
+	else
+		sh_unset_varcolors
+	fi
+}
+
+function sh_unset_varcolors() {
+	unset RED GREEN YELLOW BLUE PURPLE CYAN NC RESET BOLD
+	unset reset rst bold underline nounderline reverse
+	unset black red green yellow blue magenta cyan white gray orange purple violet
+	unset light_red light_green light_yellow light_blue light_magenta light_cyan light_white
+	unset preto vermelho verde amarelo azul roxo ciano branca cinza laranja roxa violeta
+	TICK="${white}[${verde}✓${rst}${white}]${rst}"
+	CROSS="${white}[${roxa}✗${rst}${white}]${rst}"
+	INFO="${white}[${cinza}i${rst}${white}]${rst}"
 }
 
 function sh_make_dir_layout {
@@ -134,11 +237,11 @@ function sh_make_dir_layout {
 	mkdir -pv $LFS/{etc,var} $LFS/usr/{bin,lib,sbin}
 
 	for i in bin lib sbin; do
-	  ln -sv usr/$i $LFS/$i
+		ln -sf usr/$i $LFS/$i &>/dev/null
 	done
 
 	case $(uname -m) in
-	  x86_64) mkdir -pv $LFS/lib64 ;;
+	x86_64) mkdir -pv $LFS/lib64 ;;
 	esac
 	set -e
 }
@@ -147,47 +250,13 @@ function sh_maxcol {
 	COLUMNS=$(stty size)           # Obtém as dimensões do terminal usando o comando "stty size" e armazena o resultado na variável "COLUMNS".
 	COLUMNS=${COLUMNS##* }         # Usa a expansão de parâmetro para obter apenas o número de colunas do resultado obtido em "COLUMNS".
 	((COLUMNS <= 0)) && COLUMNS=80 # Verifica se o número de colunas é menor ou igual a 0. Se for, atribui o valor padrão de 80 colunas.
-	echo $COLUMNS                  # Exibe o número de colunas (tamanho máximo) no terminal.
+	echo "$COLUMNS"                # Exibe o número de colunas (tamanho máximo) no terminal.
 }
 
 function replicate {
 	local Var
 	printf -v Var %"$2"s " "
 	echo "${Var// /$1}"
-}
-
-function sh_setvarcolors {
-	if tput setaf 1 &>/dev/null; then
-		tput sgr0 # reset colors
-		#bold=$(tput bold);
-		reset=$(tput sgr0)
-		#blue=$(tput setaf 33);
-		cyan=$(tput setaf 37)
-		green=$(tput setaf 2)
-		orange=$(tput setaf 166)
-		#purple=$(tput setaf 125);
-		red=$(tput setaf 124)
-		#violet=$(tput setaf 61);
-		white=$(tput setaf 15)
-		yellow=$(tput setaf 136)
-		pink=$(tput setaf 129)
-		#black=$(tput setaf 0);
-	else
-		#bold='';
-		reset="\e[0m"
-		reset="\e[0m"
-		#blue="\e[1;34m";
-		cyan="\e[1;36m"
-		green="\e[1;32m"
-		orange="\e[1;33m"
-		#purple="\e[1;35m";
-		red="\e[1;31m"
-		#violet="\e[1;35m";
-		white="\e[1;37m"
-		yellow="\e[1;33m"
-		pink="\033[35;1m"
-		#black="\e[1;30m";
-	fi
 }
 
 function sh_msg_info {
@@ -214,74 +283,74 @@ function sh_create_conf_syslinux {
 	local capitalized_distro_name="${distro_name,,}"
 	capitalized_distro_name="${capitalized_distro_name^}"
 	cat >$TEMPDIR/isolinux/isolinux.cfg <<-EOF
-UI vesamenu.c32
-PROMPT 0
-TIMEOUT 100
-ONTIMEOUT linux
+		UI vesamenu.c32
+		PROMPT 0
+		TIMEOUT 100
+		ONTIMEOUT linux
 
-MENU RESOLUTION 1024 768
-MENU BACKGROUND splash.png
-MENU ROWS 9
-MENU VSHIFT 8
-MENU COLOR border       30;44   #40ffffff #a0000000 std
-MENU COLOR title        1;36;44 #9033ccff #a0000000 std
-MENU COLOR sel          7;37;40 #e0ffffff #20ffffff all
-MENU COLOR unsel        37;44   #50ffffff #a0000000 std
-MENU COLOR help         37;40   #c0ffffff #a0000000 std
-MENU COLOR timeout_msg  37;40   #80ffffff #00000000 std
-MENU COLOR timeout      1;37;40 #c0ffffff #00000000 std
-MENU COLOR msg07        37;40   #90ffffff #a0000000 std
-MENU COLOR tabmsg       31;40   #30ffffff #00000000 std
+		MENU RESOLUTION 1024 768
+		MENU BACKGROUND splash.png
+		MENU ROWS 9
+		MENU VSHIFT 8
+		MENU COLOR border       30;44   #40ffffff #a0000000 std
+		MENU COLOR title        1;36;44 #9033ccff #a0000000 std
+		MENU COLOR sel          7;37;40 #e0ffffff #20ffffff all
+		MENU COLOR unsel        37;44   #50ffffff #a0000000 std
+		MENU COLOR help         37;40   #c0ffffff #a0000000 std
+		MENU COLOR timeout_msg  37;40   #80ffffff #00000000 std
+		MENU COLOR timeout      1;37;40 #c0ffffff #00000000 std
+		MENU COLOR msg07        37;40   #90ffffff #a0000000 std
+		MENU COLOR tabmsg       31;40   #30ffffff #00000000 std
 
-# Refer to http://syslinux.zytor.com/wiki/index.php/Doc/menu
-MENU TITLE ${capitalized_distro_name} Linux LiveCD
+		# Refer to http://syslinux.zytor.com/wiki/index.php/Doc/menu
+		MENU TITLE ${capitalized_distro_name} Linux LiveCD
 
-LABEL linux
-	MENU LABEL ^${capitalized_distro_name} Linux Live $kernel_version x86_64
-	KERNEL	/live/boot/vmlinuz
-	INITRD 	/live/boot/initrd
-#	APPEND	archisobasedir=live archisolabel=$VOL_ID vga=791 root=live:CDLABEL=$VOL_ID init=/sbin/init ro rd.luks=0 rd.md=0 rd.dm=0 loglevel=4 vconsole.unicode=1 vconsole.keymap=br-abnt2 locale.LANG=pt_BR rd.live.overlay.overlayfs=1
-	APPEND	init=/sbin/init VGA=791 quiet splash ro
+		LABEL linux
+			MENU LABEL ^${capitalized_distro_name} Linux Live $kernel_version x86_64
+			KERNEL  /live/boot/vmlinuz
+			INITRD  /live/boot/initrd
+		#        APPEND archisobasedir=live archisolabel=$VOL_ID vga=791 root=live:CDLABEL=$VOL_ID init=/sbin/init ro rd.luks=0 rd.md=0 rd.dm=0 loglevel=4 vconsole.unicode=1 vconsole.keymap=br-abnt2 locale.LANG=pt_BR rd.live.overlay.overlayfs=1
+			APPEND  init=/sbin/init VGA=791 quiet splash ro
 
-LABEL linux-single
-	MENU LABEL ^${capitalized_distro_name} Linux Live $kernel_version x86_64 [single]
-	LINUX	/live/boot/vmlinuz
-	INITRD	/live/boot/initrd
-#	APPEND	archisobasedir=live archisolabel=$VOL_ID vga=791 root=live:CDLABEL=$VOL_ID init=/sbin/init ro rd.luks=0 rd.md=0 rd.dm=0 loglevel=4 vconsole.unicode=1 vconsole.keymap=br-abnt2 locale.LANG=pt_BR rd.live.overlay.overlayfs=1 single
-	APPEND	init=/sbin/init single
+		LABEL linux-single
+			MENU LABEL ^${capitalized_distro_name} Linux Live $kernel_version x86_64 [single]
+			LINUX  /live/boot/vmlinuz
+			INITRD /live/boot/initrd
+		#       APPEND archisobasedir=live archisolabel=$VOL_ID vga=791 root=live:CDLABEL=$VOL_ID init=/sbin/init ro rd.luks=0 rd.md=0 rd.dm=0 loglevel=4 vconsole.unicode=1 vconsole.keymap=br-abnt2 locale.LANG=pt_BR rd.live.overlay.overlayfs=1 single
+			APPEND init=/sbin/init single
 
-LABEL existing
-	MENU LABEL Boot first HD found by BIOS
-	COM32 chain.c32
-	APPEND hd0 0
+		LABEL existing
+			MENU LABEL Boot first HD found by BIOS
+			COM32 chain.c32
+			APPEND hd0 0
 
-LABEL Windows
-	MENU LABEL Boot existing ^Windows
-	COM32 chain.c32
-	APPEND hd0 1
+		LABEL Windows
+			MENU LABEL Boot existing ^Windows
+			COM32 chain.c32
+			APPEND hd0 1
 
-LABEL memtest
-	MENU LABEL Run Memtest86+ (RAM test)
-	text help
-		If your system is having issues, a problem with your
-		system's memory may be the cause. Use this utility to
-		see if the memory is working correctly.
-	endtext
-	LINUX /boot/memtest.bin
+		LABEL memtest
+			MENU LABEL Run Memtest86+ (RAM test)
+			text help
+				If your system is having issues, a problem with your
+				system's memory may be the cause. Use this utility to
+				see if the memory is working correctly.
+			endtext
+			LINUX /boot/memtest.bin
 
-LABEL hdt
-	MENU LABEL ^HDT (Hardware Detection Tool)
-	KERNEL hdt.c32
+		LABEL hdt
+			MENU LABEL ^HDT (Hardware Detection Tool)
+			KERNEL hdt.c32
 
-LABEL Reiniciar
-	MENU LABEL ^Reiniciar
-	COM32 reboot.c32
+		LABEL Reiniciar
+			MENU LABEL ^Reiniciar
+			COM32 reboot.c32
 
-LABEL Desligar
-	MENU LABEL ^Desligar
-	COM32 poweroff.c32
+		LABEL Desligar
+			MENU LABEL ^Desligar
+			COM32 poweroff.c32
 
-EOF
+	EOF
 }
 
 function sh_ambiente {
@@ -320,7 +389,6 @@ function sh_ambiente {
 	replicate '#' "$(sh_maxcol)"
 }
 
-
 function sh_info {
 	whiptail \
 		--fb \
@@ -345,15 +413,15 @@ function sh_mksquashfs {
 
 	case $COMPRESSION in
 	gzip) mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -comp gzip -Xcompression-level 1 ;;
-	xz)   mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100% ;;
+	xz) mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100% ;;
 	zstd) mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1 ;;
 	lzma) mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1M -comp lzma ;;
-	lz4)  mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1M -comp lz4 -Xhc ;;
+	lz4) mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1M -comp lz4 -Xhc ;;
 	esac
 }
 
 function sh_domkiso {
-	if ((CREATESFS)); then
+	if $CREATESFS; then
 		sh_mksquashfs
 	else
 		if ! [[ -e "$TEMPDIR/filesystem/${squashfs_name}" ]]; then
@@ -421,50 +489,53 @@ function sh_mkiso {
 	#   -isohybrid-gpt-basdat \
 	#   $TEMPDIR
 
-#	xorriso -as mkisofs \
-#		-o "out/$OUTPUT_ISO" \
-#		-isohybrid-mbr "$ISOLINUXDIR/isohdpfx.bin" \
-#       -eltorito-catalog isolinux/boot.cat \
-#       -eltorito-boot isolinux/isolinux.bin \
-#		-no-emul-boot \
-#		-boot-load-size 4 \
-#		-boot-info-table \
-#		-eltorito-alt-boot -e isolinux/efi.img \
-#		-no-emul-boot \
-#		-isohybrid-gpt-basdat \
-#		-iso-level 3 \
-#		-full-iso9660-filenames \
-#		-joliet \
-#		-joliet-long \
-#		-rational-rock \
-#		-volid "${VOL_ID}" \
-#		$TEMPDIR
+	#	xorriso -as mkisofs \
+	#		-o "out/$OUTPUT_ISO" \
+	#		-isohybrid-mbr "$ISOLINUXDIR/isohdpfx.bin" \
+	#       -eltorito-catalog isolinux/boot.cat \
+	#       -eltorito-boot isolinux/isolinux.bin \
+	#		-no-emul-boot \
+	#		-boot-load-size 4 \
+	#		-boot-info-table \
+	#		-eltorito-alt-boot -e isolinux/efi.img \
+	#		-no-emul-boot \
+	#		-isohybrid-gpt-basdat \
+	#		-iso-level 3 \
+	#		-full-iso9660-filenames \
+	#		-joliet \
+	#		-joliet-long \
+	#		-rational-rock \
+	#		-volid "${VOL_ID}" \
+	#		$TEMPDIR
 
-		xorriso \
-            -as mkisofs \
-            -iso-level 3 \
-            -rock \
-            -joliet \
-            -max-iso9660-filenames \
-            -omit-period \
-            -omit-version-number \
-            -relaxed-filenames \
-            -allow-lowercase \
-            -eltorito-catalog isolinux/boot.cat \
-            -eltorito-boot isolinux/isolinux.bin \
-            -no-emul-boot \
-            -boot-load-size 4 \
-            -boot-info-table \
-            -eltorito-alt-boot -e isolinux/efi.img \
-            -isohybrid-gpt-basdat \
-            -no-emul-boot \
-            -isohybrid-mbr "$ISOLINUXDIR"/isohdpfx.bin \
-			-o "out/$OUTPUT_ISO" \
-            -volid "$VOL_ID" \
-            "$TEMPDIR"
+	xorriso \
+		-as mkisofs \
+		-iso-level 3 \
+		-rock \
+		-joliet \
+		-max-iso9660-filenames \
+		-omit-period \
+		-omit-version-number \
+		-relaxed-filenames \
+		-allow-lowercase \
+		-eltorito-catalog isolinux/boot.cat \
+		-eltorito-boot isolinux/isolinux.bin \
+		-no-emul-boot \
+		-boot-load-size 4 \
+		-boot-info-table \
+		-eltorito-alt-boot -e isolinux/efi.img \
+		-isohybrid-gpt-basdat \
+		-no-emul-boot \
+		-isohybrid-mbr "$ISOLINUXDIR"/isohdpfx.bin \
+		-o "out/$OUTPUT_ISO" \
+		-volid "$VOL_ID" \
+		"$TEMPDIR"
 
 	#rm -fr $TEMPDIR
-	sh_msg_info "Arquivo iso ${red}$PWD/out/$OUTPUT_ISO${reset} criado com sucesso!"
+	OUTPUT_FILE="$PWD/out/$OUTPUT_ISO"
+  hsize=$(du -sh "$OUTPUT_FILE" | awk '{print $1}')
+  sh_msg_info "${green}Iso file created $(readlink -f "$OUTPUT_FILE") ($hsize) successfully.${reset}"
+	#sh_msg_info "Arquivo iso ${red}$PWD/out/$OUTPUT_ISO${reset} criado com sucesso!"
 }
 
 function sh_usage {
@@ -497,7 +568,7 @@ function sh_check_deps {
 }
 
 function sh_init {
-	sh_setvarcolors
+	sh_set_varcolors
 	sh_check_deps
 
 	if [[ "$1" = "-h" ]] || [[ "$1" = "--help" ]] || [[ "$1" = "help" ]] || [[ "$1" = "-help" ]]; then
@@ -507,8 +578,8 @@ function sh_init {
 	while getopts "yYnNhHxXzZgGqQ" o; do
 		case "${o}" in
 		q | Q) quiet=1 ;;
-		y | Y) CREATESFS=1 ;;
-		n | N) CREATESFS=0 ;;
+		y | Y) CREATESFS=true ;;
+		n | N) CREATESFS=false ;;
 		x | X) COMPRESSION="xz" ;;
 		z | Z) COMPRESSION="zstd" ;;
 		g | G) COMPRESSION="gzip" ;;
@@ -522,7 +593,7 @@ function sh_init {
 		sh_msg_error "${_APP_} must be run as root." 1
 	fi
 
-	sh_setvarcolors
+	sh_set_varcolors
 	sh_configure
 	sh_make_dir_layout
 	sh_ambiente

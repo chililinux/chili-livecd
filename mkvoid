@@ -37,11 +37,11 @@ shopt -s extglob
 
 function sh_configure {
 	##########################################################
-	declare -g distro_name='MAZON'
-	declare -g distro_de='xfce'
+	declare -g distro_name='chililinux'
+	declare -g distro_de='base'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='mazon'
+	declare -g lfs_basename='lfs_base'
 	declare -g bootloader='syslinux'
 	declare -g initcpio='dracut' # mkinitcpio # mkinitramfs
 	##########################################################
@@ -60,7 +60,7 @@ function sh_configure {
 	declare -g date_ymd=$(date +"%Y.%m.%d")
 	declare -g VOL_ID="${distro_name}_${date_ym}"
 	declare -g capitalized_distro_name="${distro_name,,}"
-			   capitalized_distro_name="${capitalized_distro_name^}"
+			       capitalized_distro_name="${capitalized_distro_name^}"
 	##########################################################
 	sh_choosekernel
 	sh_choosebootloader
@@ -80,7 +80,10 @@ function sh_configure {
 		;;
 	esac
 	##########################################################
-	declare -g OUTPUT_ISO="$distro_name-$lfs_basename-$lfs_version-$distro_de-$kernel_version-$ARCH-$date_ymd.iso"
+  #void-live-cinnamon-custom-x86_64-6.6.65_1-20241218-0437.iso
+  #chililinux-lfs_base-live-base-6.1.28-lts-chili-x86_64-2024.12.18.is
+	#declare -g OUTPUT_ISO="$distro_name-$lfs_basename-$lfs_version-$distro_de-$kernel_version-$ARCH-$date_ymd.iso"
+	declare -g OUTPUT_ISO="$distro_name-$lfs_version-$distro_de-$lfs_basename-$kernel_version-$ARCH-$date_ymd.iso"
 	declare -g KERNEL="${ORIGEM}/boot/vmlinuz-$kernel_version"
 	declare -g INITRD="${ORIGEM}/boot/initrd-$kernel_version.img"
 	[[ ! -e $INITRD ]] && INITRD="${ORIGEM}/boot/initramfs-$kernel_version.img"
@@ -132,7 +135,7 @@ function sh_msg_warning {
 function sh_msg_error {
 	local _msg="${1}"
 	local _error="${2}"
-	printf '[%s] ERROR: %s\n' "${_APP_}" "${_msg}" >&2
+	printf "${cyan}[%s] ${red}ERROR: %s\n" "${_APP_}" "${_msg}" >&2
 	if ((_error > 0)); then
 		exit "${_error}"
 	fi
