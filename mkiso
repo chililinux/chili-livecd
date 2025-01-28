@@ -60,10 +60,10 @@ set -e
 
 function sh_configure {
 	##########################################################
-	declare -g distro_name='MAZON'
+	declare -g distro_name='CHILILINUX'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='lfs_base'
+	declare -g lfs_basename='dell'
 	declare -g squashfs_name='root.sfs'
 	#	declare -g squashfs_name='airootfs.sfs'
 	#	declare -g squashfs_name='squashfs.img'
