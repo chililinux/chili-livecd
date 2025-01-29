@@ -31,11 +31,12 @@ set -e
 
 function sh_configure {
 	##########################################################
-	declare -g distro_name='MAZON'
+	declare -g distro_name='CHILILINUX'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='mazon-beta'
+	declare -g lfs_basename='dell'
 	declare -g squashfs_name='airootfs.sfs'
+	declare -g squashfs_name='root.sfs'
 	##########################################################
 	declare -g kernel_version='6.1.28-lts-chili'
 	if [[ ! -d "$lfs_root/$lfs_basename" ]]; then

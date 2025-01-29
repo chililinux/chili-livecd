@@ -5,8 +5,9 @@
 #  mkiso
 #  Created: 2019/04/05 - 23:35 -04
 #  Altered: 2024/12/16 - 20:32 -04
+#  Updated: 2025/01/29 - 07:20 -04
 #
-#  Copyright (c) 2019-2024, Vilmar Catafesta <vcatafesta@gmail.com>
+#  Copyright (c) 2019-2025, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -49,7 +50,7 @@ declare _VERSION_='1.60.20230725'
 declare DEPENDENCIES=(printf tput xorriso mksquashfs stat whiptail)
 declare _APP_="${0##*/}"
 declare CREATESFS=true
-declare -i quiet=0
+declare quiet=false
 declare -i ncontador=0
 declare -i njobs=10
 : "${BOOTLOG:="/tmp/$APP-$(date +"%d%m%Y-%H%M%S").log"}"
@@ -58,21 +59,21 @@ declare -i njobs=10
 trap "exit 1" SIGHUP SIGINT SIGQUIT SIGTERM
 set -e
 
-function sh_configure {
+configure() {
 	##########################################################
-	declare -g distro_name='CHILILINUX'
+	declare -g distro_name='chili'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
 	declare -g lfs_basename='dell'
+	#declare -g squashfs_name='airootfs.sfs'
+	#declare -g squashfs_name='squashfs.img'
 	declare -g squashfs_name='root.sfs'
-	#	declare -g squashfs_name='airootfs.sfs'
-	#	declare -g squashfs_name='squashfs.img'
 	##########################################################
 	declare -g kernel_version='6.1.28-lts-chili'
-	if [[ ! -d "$lfs_root/$lfs_basename" ]]; then
+	[[ ! -d "$lfs_root/$lfs_basename" ]] && {
 		die "$lfs_root/$lfs_basename não existe"
-	fi
-	sh_choosekernel
+	}
+	choose_kernel
 	##########################################################
 	declare -g COMPRESSION="gzip"
 	declare -g ARCH="x86_64"
@@ -92,7 +93,7 @@ function sh_configure {
 	declare -g DESTINITRD="$TEMPDIR/live/boot/initrd"
 }
 
-function sh_choosekernel {
+choose_kernel() {
 	local array=()
 	local ARRAY=()
 	local sep="\xe2\x94\x82"
@@ -119,12 +120,12 @@ function sh_choosekernel {
 	kernel_version="${xkernel#*-}"
 }
 
-function die {
-	printf "${red}$CROSS ${pink}%03d/%03d => ${red}$(gettext "FATAL:") %s\n\033[m" "$ncontador" "$njobs" "$@"
+die() {
+  printf "${red}$CROSS ${pink}%03d/%03d => ${red}$(gettext "FATAL:") %s\n\033[m" "$ncontador" "$njobs" "$@"
 	exit 1
 }
 
-function sh_diahora {
+diahora() {
 	local DIAHORA
 
 	DIAHORA=$(date +"%d%m%Y-%T")
@@ -132,7 +133,7 @@ function sh_diahora {
 	printf "%s\n" "$DIAHORA"
 }
 
-function debug {
+debug() {
 	whiptail \
 		--fb \
 		--title "[debug]$0" \
@@ -146,7 +147,7 @@ function debug {
 	return $result
 }
 
-function sh_set_varcolors() {
+set_varcolors() {
 	# does the terminal support true-color?
 	if [[ -n "$(command -v "tput")" ]]; then
 		#tput setaf 127 | cat -v  #capturar saida
@@ -215,11 +216,11 @@ function sh_set_varcolors() {
 		: "${CROSS="${white}[${red}✗${rst}${white}]${rst}"}"
 		: "${INFO="${white}[${gray}i${rst}${white}]${rst}"}"
 	else
-		sh_unset_varcolors
+		unset_varcolors
 	fi
 }
 
-function sh_unset_varcolors() {
+unset_varcolors() {
 	unset RED GREEN YELLOW BLUE PURPLE CYAN NC RESET BOLD
 	unset reset rst bold underline nounderline reverse
 	unset black red green yellow blue magenta cyan white gray orange purple violet
@@ -230,7 +231,7 @@ function sh_unset_varcolors() {
 	INFO="${white}[${cinza}i${rst}${white}]${rst}"
 }
 
-function sh_make_dir_layout {
+make_dir_layout() {
 	local LFS=$lfs_root/$lfs_basename
 
 	set +e
@@ -246,43 +247,56 @@ function sh_make_dir_layout {
 	set -e
 }
 
-function sh_maxcol {
+maxcol() {
 	COLUMNS=$(stty size)           # Obtém as dimensões do terminal usando o comando "stty size" e armazena o resultado na variável "COLUMNS".
 	COLUMNS=${COLUMNS##* }         # Usa a expansão de parâmetro para obter apenas o número de colunas do resultado obtido em "COLUMNS".
 	((COLUMNS <= 0)) && COLUMNS=80 # Verifica se o número de colunas é menor ou igual a 0. Se for, atribui o valor padrão de 80 colunas.
 	echo "$COLUMNS"                # Exibe o número de colunas (tamanho máximo) no terminal.
 }
 
-function replicate {
-	local Var
-	printf -v Var %"$2"s " "
-	echo "${Var// /$1}"
+replicate() {
+  local char=${1:-'#'}
+  local nsize=${2:-$(tput cols)}
+  local line
+  printf -v line "%*s" "$nsize" && echo -e "${blue}${line// /$char}${reset}"
 }
 
-function sh_msg_info {
+log_msg() {
+  local retval="${PIPESTATUS[0]}"
+
+  if [[ $retval -eq 0 ]]; then
+    printf "  %b %s\\n" "${TICK}" "${*}"
+  else
+    printf "  %b %s\\n" "${CROSS}" "${*}"
+  fi
+}
+
+msg_info() {
 	local _msg="${1}"
-	((quiet)) || printf "[%s] ${yellow}INFO${reset}: %s\n" "${red}${_APP_}${reset}" "${_msg}"
+	$quiet || printf "%b %s %s %s\n" "${TICK}" "${red}${_APP_}${reset}" "${yellow}[INFO]${reset}" "${_msg}" >&2
 }
 
-function sh_msg_warning {
+msg_warning() {
 	local _msg="${1}"
-	printf '[%s] WARNING: %s\n' "${_APP_}" "${_msg}" >&2
+	$quiet || printf "==>%s ${red}[WARNING]${reset}: %s\n" "${red}${_APP_}${reset}" "${_msg}" >&2
 }
 
-function sh_msg_error {
+msg_error() {
 	local _msg="${1}"
 	local _error="${2}"
-	printf '[%s] ERROR: %s\n' "${_APP_}" "${_msg}" >&2
+	$quiet || printf "==>%s ${red}[ERROR]${yellow}: %s\n" "${cyan}${_APP_}${reset}" "${_msg}" >&2
+
 	if ((_error > 0)); then
 		exit "${_error}"
 	fi
 }
 
-function sh_create_conf_syslinux {
-	sh_msg_info "Criando CFG: ${cyan}$TEMPDIR/isolinux/isolinux.cfg${reset}"
+create_conf_syslinux() {
 	local capitalized_distro_name="${distro_name,,}"
 	capitalized_distro_name="${capitalized_distro_name^}"
-	cat >$TEMPDIR/isolinux/isolinux.cfg <<-EOF
+
+	msg_info "Criando CFG: ${cyan}$TEMPDIR/isolinux/isolinux.cfg${reset}"
+  cat >$TEMPDIR/isolinux/isolinux.cfg <<-EOF
 		UI vesamenu.c32
 		PROMPT 0
 		TIMEOUT 100
@@ -350,46 +364,46 @@ function sh_create_conf_syslinux {
 			MENU LABEL ^Desligar
 			COM32 poweroff.c32
 
-	EOF
+EOF
 }
 
-function sh_ambiente {
-	local lnotexist=0
-	replicate '#' "$(sh_maxcol)"
-	sh_msg_info "Criando ISO: ${cyan}$OUTPUT_ISO${reset}"
-	sh_msg_info "ISO LABEL  : ${cyan}$VOL_ID${reset}"
-	sh_msg_info "ISO ORIGEM : ${cyan}$ORIGEM${reset}"
-	sh_msg_info "DESTINO    : ${cyan}$TEMPDIR/filesystem/${squashfs_name}${reset}"
+set_ambiente() {
+	local lnotexist=false
+	replicate
+	msg_info "Criando ISO: ${cyan}$OUTPUT_ISO${reset}"
+	msg_info "ISO LABEL  : ${cyan}$VOL_ID${reset}"
+	msg_info "ISO ORIGEM : ${cyan}$ORIGEM${reset}"
+	msg_info "DESTINO    : ${cyan}$TEMPDIR/filesystem/${squashfs_name}${reset}"
+	replicate '-'
 
-	sh_msg_info "Criando diretorio temporario $TEMPDIR"
-	[[ -d "$TEMPDIR" ]] || lnotexist=1
+	msg_info "Criando diretorio temporario $TEMPDIR"
+	[[ -d "$TEMPDIR" ]] || lnotexist=true
 	mkdir -p "$TEMPDIR"/{filesystem,isolinux,live/boot,live/boot/grub,efi/boot}
 
-	sh_msg_info "Copiando alguns necessarios arquivos..."
+	msg_info "Copiando alguns necessarios arquivos..."
 	#	for file in $isolinux_files; do
 	#		cp $ISOLINUXDIR/$file $TEMPDIR/isolinux
 	#	done
 	#	cp $ISOLINUXDIR/efiboot.img $TEMPDIR/isolinux
 	#	cp $LOCALDIR/model/efi/boot/bootx64.efi $TEMPDIR/efi/boot
 
-	if ((lnotexist)); then
+	if $lnotexist; then
 		cp -rpn "$LOCALDIR"/model/. "$TEMPDIR"/.
 	fi
 
 	echo "$distro_name" >"$TEMPDIR/isolinux/venomlive"
 	[ -d livecd/virootfs ] && cp -aR livecd/virootfs "$TEMPDIR"
 
-	sh_msg_info "Copiando kernel $KERNEL to $DESTKERNEL"
+	msg_info "Copiando kernel $KERNEL to $DESTKERNEL"
 	cp -f "$KERNEL" "$TEMPDIR/live/boot/vmlinuz"
 
-	sh_msg_info "Copiando initrd $INITRD to $DESTINITRD"
+	msg_info "Copiando initrd $INITRD to $DESTINITRD"
 	cp -f "$INITRD" "$TEMPDIR/live/boot/initrd"
 
-	sh_create_conf_syslinux
-	replicate '#' "$(sh_maxcol)"
+	create_conf_syslinux
 }
 
-function sh_info {
+info() {
 	whiptail \
 		--fb \
 		--title "[debug]$0" \
@@ -403,45 +417,43 @@ function sh_info {
 	return $result
 }
 
-function sh_mksquashfs {
-	if [[ -e "$TEMPDIR/filesystem/${squashfs_name}" ]]; then
-		sh_msg_info "Removendo OLD file squashfs ${squashfs_name}..."
-		rm -f $TEMPDIR/filesystem/${squashfs_name}
-	fi
-
-	#	info "  ORIGEM : $ORIGEM\n" "DESTINO : $TEMPDIR/filesystem/${squashfs_name}"
+make_squashfs() {
+  msg_info "Removendo OLD file squashfs ${squashfs_name}..."
+  rm -f $TEMPDIR/filesystem/${squashfs_name}
 
 	case $COMPRESSION in
 	gzip) mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -comp gzip -Xcompression-level 1 ;;
-	xz) mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100% ;;
+	xz)   mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1048576 -comp xz -Xdict-size 100% ;;
 	zstd) mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1M -comp zstd -Xcompression-level 1 ;;
 	lzma) mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1M -comp lzma ;;
-	lz4) mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1M -comp lz4 -Xhc ;;
+	lz4)  mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -b 1M -comp lz4 -Xhc ;;
+	*)    mksquashfs "$ORIGEM" "$TEMPDIR/filesystem/${squashfs_name}" -noappend -ef exclude_dir -comp gzip -Xcompression-level 1 ;;
 	esac
 }
 
-function sh_domkiso {
-	if $CREATESFS; then
-		sh_mksquashfs
+make_iso() {
+  if $CREATESFS; then
+    make_squashfs
 	else
-		if ! [[ -e "$TEMPDIR/filesystem/${squashfs_name}" ]]; then
-			sh_msg_info "filesystem squashfs nao localizado, reconstruindo..."
-			sh_msg_info
+		if [[ ! -e "$TEMPDIR/filesystem/${squashfs_name}" ]]; then
+			msg_info "filesystem squashfs nao localizado, reconstruindo..."
+      make_squashfs
 		else
-			sh_msg_info "Pulando filesystem squashfs..."
+			msg_info "Pulando filesystem squashfs..."
 		fi
 	fi
-	sh_mkiso
+	run_make_iso
 }
 
-function sh_mkiso {
+run_make_iso() {
 	[[ ! -d "out" ]] && { mkdir -p out; }
 	[[ -e "out/$OUTPUT_ISO" ]] && {
-		sh_msg_info "Excluindo .iso antigo..."
+		msg_info "Excluindo .iso antigo..."
 		rm -f "out/$OUTPUT_ISO"
 	}
-	sh_msg_info "Criando iso out/$OUTPUT_ISO..."
+	msg_info "Criando iso out/$OUTPUT_ISO..."
 
+  replicate
 	#MBR
 	#xorriso -as mkisofs                                 \
 	#		-r -J -joliet-long                          \
@@ -508,6 +520,7 @@ function sh_mkiso {
 	#		-volid "${VOL_ID}" \
 	#		$TEMPDIR
 
+  echo "$black"
 	xorriso \
 		-as mkisofs \
 		-iso-level 3 \
@@ -531,14 +544,14 @@ function sh_mkiso {
 		-volid "$VOL_ID" \
 		"$TEMPDIR"
 
+  replicate
 	#rm -fr $TEMPDIR
 	OUTPUT_FILE="$PWD/out/$OUTPUT_ISO"
-  hsize=$(du -sh "$OUTPUT_FILE" | awk '{print $1}')
-  sh_msg_info "${green}Iso file created $(readlink -f "$OUTPUT_FILE") ($hsize) successfully.${reset}"
-	#sh_msg_info "Arquivo iso ${red}$PWD/out/$OUTPUT_ISO${reset} criado com sucesso!"
+	hsize=$(du -sh "$OUTPUT_FILE" | awk '{print $1}')
+	msg_info "${green}$(readlink -f "$OUTPUT_FILE") ${cyan}($hsize) ${reset}"
 }
 
-function sh_usage {
+usage() {
 	echo -e "${orange}uso${green}:${white}  ${_APP_} ${green}<${white}operação${green}> [${white}...${green}]${reset}"
 	echo -e "operações:"
 	echo -e "${pink}  -h${cyan}, display this help and exit"
@@ -551,53 +564,57 @@ function sh_usage {
 	exit 1
 }
 
-function sh_check_deps {
-	local errorFound=0
+check_deps() {
+	local errorFound=false
 	declare -a missing
 
 	for d in "${DEPENDENCIES[@]}"; do
-		[[ -z $(command -v "$d") ]] && missing+=("$d") && errorFound=1 && printf '%s\n' "${red}ERRO${reset}: não encontrei o comando ${orange}'$d'${reset}"
+    if ! command -v "$d" &>/dev/null; then
+		  missing+=("$d")
+		  errorFound=true
+		  printf '%s\n' "${red}ERRO${reset}: não encontrei o comando ${orange}'$d'${reset}"
+    else
+      log_msg "Check: ${cyan}$d"
+    fi
 	done
-	#[[ ${#missing[@]} -ne 0 ]]
-	if ((errorFound)); then
+	if $errorFound; then
 		erro "#### IMPOSSÍVEL CONTINUAR ####"
 		msg "Esse script precisa dos comandos listados acima" >&2
 		msg "Instale-os e/ou verifique se estão no seu \$PATH" >&2
-		exit 1
-	fi
+		die
+  fi
 }
 
-function sh_init {
-	sh_set_varcolors
-	sh_check_deps
-
+init() {
+	set_varcolors
 	if [[ "$1" = "-h" ]] || [[ "$1" = "--help" ]] || [[ "$1" = "help" ]] || [[ "$1" = "-help" ]]; then
-		sh_usage
+		usage
 	fi
+	check_deps
 
 	while getopts "yYnNhHxXzZgGqQ" o; do
 		case "${o}" in
-		q | Q) quiet=1 ;;
+		q | Q) quiet=true ;;
 		y | Y) CREATESFS=true ;;
 		n | N) CREATESFS=false ;;
 		x | X) COMPRESSION="xz" ;;
 		z | Z) COMPRESSION="zstd" ;;
 		g | G) COMPRESSION="gzip" ;;
-		h | H) sh_usage ;;
-		*) sh_usage ;;
+		h | H) usage ;;
+		*) usage ;;
 		esac
 	done
 	shift $((OPTIND - 1))
 
 	if ((EUID != 0)); then
-		sh_msg_error "${_APP_} must be run as root." 1
+		die "${_APP_} must be run as root."
 	fi
 
-	sh_set_varcolors
-	sh_configure
-	sh_make_dir_layout
-	sh_ambiente
-	sh_domkiso
+	set_varcolors
+	configure
+	make_dir_layout
+	set_ambiente
+	make_iso
 }
 
-sh_init "$@"
+init "$@"

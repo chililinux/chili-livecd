@@ -37,11 +37,11 @@ shopt -s extglob
 
 function sh_configure {
 	##########################################################
-	declare -g distro_name='chililinux'
+	declare -g distro_name='chili'
 	declare -g distro_de='base'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='lfs_base'
+	declare -g lfs_basename='dell'
 	declare -g bootloader='syslinux'
 	declare -g initcpio='dracut' # mkinitcpio # mkinitramfs
 	##########################################################

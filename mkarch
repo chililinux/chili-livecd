@@ -37,12 +37,13 @@ set -e
 
 function sh_configure {
 	##########################################################
-	declare -g distro_name='CHILI'
-	declare -g lfs_de='xfce'
+	declare -g distro_name='CHILILINUX'
+	declare -g lfs_de='base'
 	declare -g lfs_version='live'
 	declare -g lfs_root='/lfs'
-	declare -g lfs_basename='chili'
+	declare -g lfs_basename='dell'
 	declare -g squashfs_name='airootfs.sfs'
+	declare -g squashfs_name='root.sfs'
 	declare -g bootloader='syslinux'
 	##########################################################
 	declare -g kernel_version='6.1.28-lts-chili'
